@@ -68,6 +68,9 @@
       <DesignTime>True</DesignTime>
     </Compile>
     <Compile Include="SettingsToLegacySettings.cs" />
+    <Compile Include="SleepingCredentialProvider.cs" />
+    <Compile Include="VisualStudioProxyCredentialProvider.cs" />
+    <Compile Include="VisualStudioAccountProvider.cs" />
     <Compile Include="VisualStudioCredentialProvider.cs" />
     <Compile Include="VisualStudioUIContext.cs" />
     <Compile Include="VisualStudioUIContextFactory.cs" />
@@ -131,6 +134,10 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\NuGet.Credentials\NuGet.Credentials.csproj">
+      <Project>{32a23995-14c7-483b-98c3-0ae4185373ea}</Project>
+      <Name>NuGet.Credentials</Name>
+    </ProjectReference>
     <ProjectReference Include="..\NuGet.VisualStudio.Implementation\NuGet.VisualStudio.Implementation.csproj">
       <Project>{9623cf30-192c-4864-b419-29649169ae30}</Project>
       <Name>NuGet.VisualStudio.Implementation</Name>
