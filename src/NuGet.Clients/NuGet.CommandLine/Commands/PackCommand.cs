@@ -159,7 +159,8 @@ namespace NuGet.CommandLine
 
             outputPath = outputPath ?? GetOutputPath(builder);
 
-            ExcludeFiles(builder.Files);
+            ExcludeFiles(builder.Files, builder.Id + Constants.ManifestExtension);
+
             // Track if the package file was already present on disk
             bool isExistingPackage = File.Exists(outputPath);
             try
@@ -228,12 +229,10 @@ namespace NuGet.CommandLine
             Console.WriteLine();
         }
 
-        internal void ExcludeFiles(ICollection<IPackageFile> packageFiles)
+        internal void ExcludeFiles(ICollection<IPackageFile> packageFiles, string manifestFile)
         {
-            // Always exclude the nuspec file
-            // Review: This exclusion should be done by the package builder because it knows which file would collide with the auto-generated
-            // manifest file.
-            var wildCards = _excludes.Concat(new[] { @"**\*" + Constants.ManifestExtension });
+            // Avoid collision with the auto-generated manifest file.
+            var wildCards = _excludes.Concat(new[] { manifestFile });
             if (!NoDefaultExcludes)
             {
                 // The user has not explicitly disabled default filtering.
