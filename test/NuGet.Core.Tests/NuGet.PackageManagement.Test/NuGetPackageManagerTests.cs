@@ -597,17 +597,15 @@ namespace NuGet.Test
                 testSolutionManager,
                 deleteOnRestartManager);
 
-            var randomPackagesConfigFolderPath = TestFilesystemUtility.CreateRandomTestFolder();
-            var randomPackagesConfigPath = Path.Combine(randomPackagesConfigFolderPath, "packages.config");
-
             var projectTargetFramework = NuGetFramework.Parse("net45");
             var msBuildNuGetProjectSystem = new TestMSBuildNuGetProjectSystem(projectTargetFramework, new TestNuGetProjectContext());
-            var msBuildNuGetProject = new MSBuildNuGetProject(msBuildNuGetProjectSystem, packagesFolderPath, randomPackagesConfigFolderPath);
+            var msBuildNuGetProject = testSolutionManager.AddNewMSBuildProject();
+            var packagesConfigPath = msBuildNuGetProject.PackagesConfigNuGetProject.FullPath;
             var packageIdentity = PackageWithDependents[2];
 
             // Pre-Assert
             // Check that the packages.config file does not exist
-            Assert.False(File.Exists(randomPackagesConfigPath));
+            Assert.False(File.Exists(packagesConfigPath));
             // Check that there are no packages returned by PackagesConfigProject
             var packagesInPackagesConfig = (await msBuildNuGetProject.PackagesConfigNuGetProject.GetInstalledPackagesAsync(token)).ToList();
             Assert.Equal(0, packagesInPackagesConfig.Count);
@@ -619,7 +617,7 @@ namespace NuGet.Test
 
             // Assert
             // Check that the packages.config file exists after the installation
-            Assert.True(File.Exists(randomPackagesConfigPath));
+            Assert.True(File.Exists(packagesConfigPath));
             // Check the number of packages and packages returned by PackagesConfigProject after the installation
             packagesInPackagesConfig = (await msBuildNuGetProject.PackagesConfigNuGetProject.GetInstalledPackagesAsync(token)).ToList();
             Assert.Equal(2, packagesInPackagesConfig.Count);
@@ -651,7 +649,7 @@ namespace NuGet.Test
                 exception.Message);
 
             // Clean-up
-            TestFilesystemUtility.DeleteRandomTestFolders(testSolutionManager.SolutionDirectory, randomPackagesConfigFolderPath);
+            TestFilesystemUtility.DeleteRandomTestFolders(testSolutionManager.SolutionDirectory);
         }
 
         [Fact]
@@ -1460,7 +1458,7 @@ namespace NuGet.Test
             Assert.Equal(projectTargetFramework, packagesInPackagesConfig[0].TargetFramework);
 
             // Clean-up
-            TestFilesystemUtility.DeleteRandomTestFolders(testSolutionManager.SolutionDirectory, randomPackagesConfigFolderPath);
+            TestFilesystemUtility.DeleteRandomTestFolders(testSolutionManager.SolutionDirectory);
         }
 
         [Fact]
@@ -2085,12 +2083,10 @@ namespace NuGet.Test
                 deleteOnRestartManager);
             var packagesFolderPath = PackagesFolderPathUtility.GetPackagesFolderPath(testSolutionManager, testSettings);
 
-            var randomPackagesConfigFolderPath = TestFilesystemUtility.CreateRandomTestFolder();
-            var randomPackagesConfigPath = Path.Combine(randomPackagesConfigFolderPath, "packages.config");
-
             var projectTargetFramework = NuGetFramework.Parse("net45");
             var msBuildNuGetProjectSystem = new TestMSBuildNuGetProjectSystem(projectTargetFramework, new TestNuGetProjectContext());
-            var msBuildNuGetProject = new MSBuildNuGetProject(msBuildNuGetProjectSystem, packagesFolderPath, randomPackagesConfigFolderPath);
+            var msBuildNuGetProject = testSolutionManager.AddNewMSBuildProject();
+            var packagesConfigPath = msBuildNuGetProject.PackagesConfigNuGetProject.FullPath;
             var packageIdentity0 = PackageWithDependents[0]; // jQuery.1.4.4
 
             var resolutionContext = new ResolutionContext();
@@ -2104,9 +2100,9 @@ namespace NuGet.Test
 
             // Pre-Assert
             // Check that the packages.config file does not exist
-            Assert.False(File.Exists(randomPackagesConfigPath));
+            Assert.False(File.Exists(packagesConfigPath));
             // Check that there are no packages returned by PackagesConfigProject
-            var packagesInPackagesConfig = (await msBuildNuGetProject.PackagesConfigNuGetProject.GetInstalledPackagesAsync(token)).ToList();
+            var packagesInPackagesConfig = (await msBuildNuGetProject.GetInstalledPackagesAsync(token)).ToList();
             Assert.Equal(0, packagesInPackagesConfig.Count);
             Assert.Equal(0, msBuildNuGetProjectSystem.References.Count);
 
@@ -2116,9 +2112,9 @@ namespace NuGet.Test
 
             // Assert
             // Check that the packages.config file exists after the installation
-            Assert.True(File.Exists(randomPackagesConfigPath));
+            Assert.True(File.Exists(packagesConfigPath));
             // Check the number of packages and packages returned by PackagesConfigProject after the installation
-            packagesInPackagesConfig = (await msBuildNuGetProject.PackagesConfigNuGetProject.GetInstalledPackagesAsync(token)).ToList();
+            packagesInPackagesConfig = (await msBuildNuGetProject.GetInstalledPackagesAsync(token)).ToList();
             Assert.Equal(1, packagesInPackagesConfig.Count);
             Assert.Equal(packageIdentity0, packagesInPackagesConfig[0].PackageIdentity);
             Assert.Equal(projectTargetFramework, packagesInPackagesConfig[0].TargetFramework);
@@ -2142,7 +2138,7 @@ namespace NuGet.Test
                 packageActions[1].SourceRepository.PackageSource.Source);
 
             // Clean-up
-            TestFilesystemUtility.DeleteRandomTestFolders(testSolutionManager.SolutionDirectory, randomPackagesConfigFolderPath);
+            TestFilesystemUtility.DeleteRandomTestFolders(testSolutionManager.SolutionDirectory);
         }
 
         // [Fact] -- This test performs update but verifies for a specific version
