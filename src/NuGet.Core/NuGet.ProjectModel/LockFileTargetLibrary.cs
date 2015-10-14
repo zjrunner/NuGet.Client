@@ -27,6 +27,8 @@ namespace NuGet.ProjectModel
 
         public IList<LockFileItem> NativeLibraries { get; set; } = new List<LockFileItem>();
 
+        public IList<LockFileItemGroup> SharedContentGroups { get; set; } = new List<LockFileItemGroup>();
+
         public bool Equals(LockFileTargetLibrary other)
         {
             if (other == null)
@@ -52,7 +54,10 @@ namespace NuGet.ProjectModel
                 && CompileTimeAssemblies.OrderBy(item => item.Path, StringComparer.OrdinalIgnoreCase)
                     .SequenceEqual(other.CompileTimeAssemblies.OrderBy(item => item.Path, StringComparer.OrdinalIgnoreCase))
                 && NativeLibraries.OrderBy(item => item.Path, StringComparer.OrdinalIgnoreCase)
-                    .SequenceEqual(other.NativeLibraries.OrderBy(item => item.Path, StringComparer.OrdinalIgnoreCase));
+                    .SequenceEqual(other.NativeLibraries.OrderBy(item => item.Path, StringComparer.OrdinalIgnoreCase))
+                && SharedContentGroups.OrderBy(group => group.Property).ThenBy(group => group.PropertyValue)
+                    .SequenceEqual(other.SharedContentGroups.OrderBy(group => group.Property)
+                    .ThenBy(group => group.PropertyValue));
         }
 
         public override bool Equals(object obj)
@@ -95,6 +100,13 @@ namespace NuGet.ProjectModel
             foreach (var item in NativeLibraries.OrderBy(item => item.Path, StringComparer.OrdinalIgnoreCase))
             {
                 combiner.AddObject(item);
+            }
+
+            foreach (var group in SharedContentGroups
+                .OrderBy(group => group.Property)
+                .ThenBy(group => group.PropertyValue))
+            {
+                combiner.AddObject(group);
             }
 
             return combiner.CombinedHash;

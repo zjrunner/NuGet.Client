@@ -35,6 +35,7 @@ namespace NuGet.ProjectModel
         private const string RuntimeProperty = "runtime";
         private const string CompileProperty = "compile";
         private const string NativeProperty = "native";
+        private const string SharedProperty = "shared";
         private const string ResourceProperty = "resource";
         private const string TypeProperty = "type";
 
@@ -296,6 +297,11 @@ namespace NuGet.ProjectModel
                 json[NativeProperty] = WriteObject(ordered, WriteFileItem);
             }
 
+            if (library.SharedContentGroups.Count > 0)
+            {
+                json[SharedProperty] = WriteFileItemGroup(library.SharedContentGroups);
+            }
+
             return new JProperty(library.Name + "/" + library.Version.ToNormalizedString(), json);
         }
 
@@ -357,7 +363,46 @@ namespace NuGet.ProjectModel
         {
             return new JProperty(
                 item.Path,
-               new JObject(item.Properties.Select(x => new JProperty(x.Key, x.Value))));
+                new JObject(item.Properties.OrderBy(prop => prop.Key).Select(x =>
+                {
+                    if (Boolean.TrueString.Equals(x.Value, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return new JProperty(x.Key, true);
+                    }
+                    else if (Boolean.FalseString.Equals(x.Value, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return new JProperty(x.Key, false);
+                    }
+                    else
+                    {
+                        return new JProperty(x.Key, x.Value);
+                    }
+                })));
+        }
+
+        private static JObject WriteFileItemGroup(IList<LockFileItemGroup> groups)
+        {
+            var result = new JObject();
+
+            foreach (var keyGroup in groups.GroupBy(group => group.Property).OrderBy(group => group.Key))
+            {
+                var children = new JObject();
+                var keyProperty = new JProperty(keyGroup.Key, children);
+                result.Add(keyProperty);
+
+                foreach (var group in keyGroup.OrderBy(group => group.PropertyValue))
+                {
+                    var items = new JObject();
+                    children.Add(new JProperty(group.PropertyValue, items));
+
+                    foreach (var item in group.Items.OrderBy(item => item.Path, StringComparer.OrdinalIgnoreCase))
+                    {
+                        items.Add(WriteFileItem(item));
+                    }
+                }
+            }
+
+            return result;
         }
 
         private static IList<TItem> ReadArray<TItem>(JArray json, Func<JToken, TItem> readItem)
