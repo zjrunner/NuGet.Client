@@ -138,6 +138,25 @@ namespace NuGet.PackageManagement.VisualStudio
             }
         }
 
+        private string _dteUniqueName;
+
+        public virtual string DTEUniqueName
+        {
+            get
+            {
+                if (String.IsNullOrEmpty(_dteUniqueName))
+                {
+                    ThreadHelper.JoinableTaskFactory.Run(async delegate
+                    {
+                        await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                        _dteUniqueName = EnvDTEProject.UniqueName;
+                    });
+                }
+                return _dteUniqueName;
+            }
+        }
+
+
         private NuGetFramework _targetFramework;
 
         public NuGetFramework TargetFramework

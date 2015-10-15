@@ -957,6 +957,7 @@ namespace NuGetVSExtension
                     Search(windowFrame, searchText);
 
                     windowFrame.Show();
+
                 }
             });
         }

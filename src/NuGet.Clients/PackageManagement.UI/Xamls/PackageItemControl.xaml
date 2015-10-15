@@ -28,8 +28,6 @@
         x:Key="SummaryToFontStyleConverter" />
       <ui:SummaryToStringConverter
         x:Key="SummaryToStringConverter" />
-      <ui:VersionToStringConverter
-        x:Key="VersionToStringConverter" />
       <ui:AuthorAndDownloadCountToStringConverter
         x:Key="AuthorAndDownloadCountToStringConverter" />
       <ui:StringFormatConverter

@@ -42,6 +42,11 @@ namespace NuGet.Common
 
         public string ProjectUniqueName { get; }
 
+        public string DTEUniqueName
+        {
+            get { return null; }
+        }
+
         public NuGetFramework TargetFramework
         {
             get

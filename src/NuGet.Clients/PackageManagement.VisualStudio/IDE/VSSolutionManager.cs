@@ -19,6 +19,8 @@ using NuGet.ProjectManagement;
 using NuGet.ProjectManagement.Projects;
 using NuGet.Protocol.Core.Types;
 using EnvDTEProject = EnvDTE.Project;
+using EnvDTEProjectItem = EnvDTE.ProjectItem;
+using EnvDTEProjectItems = EnvDTE.ProjectItems;
 
 namespace NuGet.PackageManagement.VisualStudio
 {
@@ -176,6 +178,101 @@ namespace NuGet.PackageManagement.VisualStudio
             var projects = _nuGetAndEnvDTEProjectCache.GetNuGetProjects().ToList();
 
             return projects;
+        }
+                
+        public IEnumerable<NodeBase> GetSolutionHierarchy()
+        {
+            Init();
+
+            return ThreadHelper.JoinableTaskFactory.Run(async delegate
+            {
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+
+                var nodes = new List<NodeBase>();
+                var envDTESolution = _dte.Solution;
+                if (envDTESolution == null
+                    || !envDTESolution.IsOpen)
+                {
+                    return nodes;
+                }
+
+                foreach (EnvDTEProject envDTEProject in envDTESolution.Projects)
+                {
+                    var node = CreateNode(envDTEProject);
+                    if (node != null)
+                    {
+                        nodes.Add(node);
+                    }
+                }
+
+                return nodes;
+            });
+        }
+
+        private NodeBase CreateNode(EnvDTEProject project)
+        {
+            if (EnvDTEProjectUtility.IsSolutionFolder(project))
+            {
+                List<NodeBase> children = new List<NodeBase>();
+
+                EnvDTEProjectItems envDTEProjectItems = null;
+                try
+                {
+                    // bug 1138: Oracle Database Project doesn't implement the ProjectItems property
+                    envDTEProjectItems = project.ProjectItems;
+                }
+                catch (NotImplementedException)
+                {
+                    return null;
+                }
+
+                // ProjectItems property can be null if the project is unloaded
+                if (envDTEProjectItems != null)
+                {
+                    foreach (EnvDTEProjectItem envDTEProjectItem in envDTEProjectItems)
+                    {
+                        try
+                        {
+                            if (envDTEProjectItem.SubProject != null)
+                            {
+                                var node = CreateNode(envDTEProjectItem.SubProject);
+                                if (node != null)
+                                {
+                                    children.Add(node);
+                                }
+                            }
+                        }
+                        catch (NotImplementedException)
+                        {
+                            // Some project system don't implement the SubProject property,
+                            // just ignore those
+                        }
+                    }
+                }
+
+                if (children.Count > 0)
+                {
+                    return new FolderNode(project.Name, project.UniqueName, children);
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            else
+            {
+                NuGetProject nugetProject;
+                if (_nuGetAndEnvDTEProjectCache.TryGetNuGetProject(
+                    project.UniqueName,
+                    out nugetProject))
+                {
+                    return new ProjectNode(nugetProject);
+                }
+                else
+                {
+                    return null;
+                }
+            }
         }
 
         private IEnumerable<EnvDTEProject> GetEnvDTEProjects()

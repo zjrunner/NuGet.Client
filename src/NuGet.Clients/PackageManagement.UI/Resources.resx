@@ -123,7 +123,7 @@
   <data name="Action_Install" xml:space="preserve">
     <value>Install</value>
   </data>
-  <data name="Action_Uninstall" xml:space="preserve">
+  <data name="Button_Uninstall" xml:space="preserve">
     <value>Uninstall</value>
   </data>
   <data name="DependencyBehavior_Highest" xml:space="preserve">
@@ -405,8 +405,8 @@ Packages installed into Website projects will not be restored during build. Cons
   <data name="Text_ShowAll" xml:space="preserve">
     <value>Show all</value>
   </data>
-  <data name="Link_LearnAboutOptions" xml:space="preserve">
-    <value>Learn about Options</value>
+  <data name="Link_LearnAboutInstallOptions" xml:space="preserve">
+    <value>Learn about Install Options</value>
   </data>
   <data name="Label_ReportAbuse" xml:space="preserve">
     <value>Report Abuse:</value>
@@ -416,9 +416,6 @@ Packages installed into Website projects will not be restored during build. Cons
   </data>
   <data name="Action_Downgrade" xml:space="preserve">
     <value>Downgrade</value>
-  </data>
-  <data name="Action_Upgrade" xml:space="preserve">
-    <value>Upgrade</value>
   </data>
   <data name="Action_Update" xml:space="preserve">
     <value>Update</value>
@@ -475,5 +472,17 @@ Packages installed into Website projects will not be restored during build. Cons
   <data name="Label_UseInsteadInSolutionPackageManager" xml:space="preserve">
     <value>[Incompatible: Use {0} instead]</value>
     <comment>The format string used for projects in the solution package manager. The string should contain exactly one instance of "{0}". No other formatting is supported.</comment>
+  </data>
+  <data name="Label_InstalledColon" xml:space="preserve">
+    <value>Installed:</value>
+  </data>
+  <data name="Button_Install" xml:space="preserve">
+    <value>Install</value>
+  </data>
+  <data name="Link_LearnAboutUninstallOptions" xml:space="preserve">
+    <value>Learn about Uninstall Options</value>
+  </data>
+  <data name="Label_InstalledVersionsCount" xml:space="preserve">
+    <value>Version(s) - {0}</value>
   </data>
 </root>

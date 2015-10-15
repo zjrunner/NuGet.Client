@@ -46,7 +46,9 @@ namespace NuGet.PackageManagement.UI
 
                 // TODO: should stable packages allow prerelease dependencies if include prerelease was checked?
                 // Allow prerelease packages only if the target is prerelease
-                var includePrelease = userAction.PackageIdentity.Version.IsPrerelease || userAction.Action == NuGetProjectActionType.Uninstall;
+                var includePrelease = 
+                    userAction.PackageIdentity?.Version.IsPrerelease == true || 
+                    userAction.Action == NuGetProjectActionType.Uninstall;
                 var includeUnlisted = userAction.Action == NuGetProjectActionType.Uninstall;
 
                 var resolutionContext = new ResolutionContext(uiService.DependencyBehavior, includePrelease, includeUnlisted, VersionConstraints.None);

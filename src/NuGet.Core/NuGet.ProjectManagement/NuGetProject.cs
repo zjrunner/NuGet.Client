@@ -132,10 +132,18 @@ namespace NuGet.ProjectManagement
 
     public static class NuGetProjectMetadataKeys
     {
+        // The name of the project, e.g. "ConsoleApplication1"
         public const string Name = "Name";
+
+        // The name of the project, relative to the solution. e.g. "src\ConsoleApplication1"
         public const string UniqueName = "UniqueName";
+
         public const string TargetFramework = "TargetFramework";
         public const string FullPath = "FullPath";
+
+        // If the nuget project is associated with a DTE.Project
+        // then the DTE.Project.UniqueName is saved by this key.
+        public const string DTEUniqueName = "DTEUniqueName";
 
         // used by Project K projects
         public const string SupportedFrameworks = "SupportedFrameworks";

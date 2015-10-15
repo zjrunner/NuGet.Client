@@ -59,7 +59,8 @@ namespace NuGet.PackageManagement.VisualStudio
                 result = new ProjectKNuGetProject(
                     projectK, 
                     envDTEProject.Name, 
-                    EnvDTEProjectUtility.GetCustomUniqueName(envDTEProject));
+                    EnvDTEProjectUtility.GetCustomUniqueName(envDTEProject),
+                    envDTEProject.UniqueName);
             }
             else
             {

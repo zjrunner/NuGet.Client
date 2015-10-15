@@ -51,6 +51,12 @@ namespace NuGet.PackageManagement
         IEnumerable<NuGetProject> GetNuGetProjects();
 
         /// <summary>
+        /// Gets the solution hierarchy. 
+        /// </summary>
+        /// <returns>The first level of nodes under the solution.</returns>
+        IEnumerable<NodeBase> GetSolutionHierarchy();
+
+        /// <summary>
         /// Get the safe name of the specified <see cref="NuGetProject" /> which guarantees not to conflict with other
         /// projects.
         /// </summary>

@@ -15,11 +15,21 @@ namespace NuGet.ProjectManagement
         string ProjectName { get; }
         string ProjectUniqueName { get; }
         string ProjectFullPath { get; }
+
+        // The DTE.Project.UniqueName if this project system is created
+        // for a DTE.Project. Otherwise, null.
+        string DTEUniqueName { get; }
+
         INuGetProjectContext NuGetProjectContext { get; }
+
         void SetNuGetProjectContext(INuGetProjectContext nuGetProjectContext);
+
         void AddFile(string path, Stream stream);
+
         void AddExistingFile(string path);
+
         void RemoveFile(string path);
+
         bool FileExistsInProject(string path);
 
         /// <summary>
@@ -29,6 +39,7 @@ namespace NuGet.ProjectManagement
         void AddReference(string referencePath);
 
         void RemoveReference(string name);
+
         bool ReferenceExists(string name);
 
         /// <summary>
@@ -38,18 +49,27 @@ namespace NuGet.ProjectManagement
         void AddFrameworkReference(string name);
 
         void AddImport(string targetFullPath, ImportLocation location);
+
         void RemoveImport(string targetFullPath);
+
         dynamic GetPropertyValue(string propertyName);
+
         string ResolvePath(string path);
+
         bool IsSupportedFile(string path);
+
         void AddBindingRedirects();
+
         Task ExecuteScriptAsync(PackageIdentity identity, string packageInstallPath, string scriptRelativePath, NuGetProject nuGetProject, bool throwOnFailure);
+
         void BeginProcessing();
+
         /// <summary>
         /// This method can be called multiple times during a batch operation in between a single BeginProcessing/EndProcessing calls.
         /// </summary>
         /// <param name="files">a list of files being changed.</param>
         void RegisterProcessedFiles(IEnumerable<string> files);
+
         void EndProcessing();
 
         void DeleteDirectory(string path, bool recursive);

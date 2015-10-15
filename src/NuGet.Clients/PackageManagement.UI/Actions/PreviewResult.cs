@@ -27,7 +27,7 @@ namespace NuGet.PackageManagement.UI
             IEnumerable<UpdatePreviewResult> updated)
         {
             string s = null;
-            if (target.TryGetMetadata(NuGetProjectMetadataKeys.Name, out s))
+            if (target.TryGetMetadata(NuGetProjectMetadataKeys.UniqueName, out s))
             {
                 Name = s;
             }

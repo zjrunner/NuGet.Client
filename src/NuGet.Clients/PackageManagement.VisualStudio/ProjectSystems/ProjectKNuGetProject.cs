@@ -30,11 +30,16 @@ namespace NuGet.PackageManagement.VisualStudio
     {
         private INuGetPackageManager _project;
 
-        public ProjectKNuGetProject(INuGetPackageManager project, string projectName, string uniqueName)
+        public ProjectKNuGetProject(
+            INuGetPackageManager project, 
+            string projectName, 
+            string uniqueName,
+            string dteUniqueName)
         {
             _project = project;
             InternalMetadata.Add(NuGetProjectMetadataKeys.Name, projectName);
             InternalMetadata.Add(NuGetProjectMetadataKeys.UniqueName, uniqueName);
+            InternalMetadata.Add(NuGetProjectMetadataKeys.DTEUniqueName, dteUniqueName);
 
             var supportedFrameworks = _project.GetSupportedFrameworksAsync(CancellationToken.None)
                 .Result

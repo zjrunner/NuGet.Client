@@ -88,29 +88,11 @@ namespace NuGet.PackageManagement.UI {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Uninstall.
-        /// </summary>
-        public static string Action_Uninstall {
-            get {
-                return ResourceManager.GetString("Action_Uninstall", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Update.
         /// </summary>
         public static string Action_Update {
             get {
                 return ResourceManager.GetString("Action_Update", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Upgrade.
-        /// </summary>
-        public static string Action_Upgrade {
-            get {
-                return ResourceManager.GetString("Action_Upgrade", resourceCulture);
             }
         }
         
@@ -160,6 +142,15 @@ namespace NuGet.PackageManagement.UI {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Install.
+        /// </summary>
+        public static string Button_Install {
+            get {
+                return ResourceManager.GetString("Button_Install", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to No.
         /// </summary>
         public static string Button_No {
@@ -201,6 +192,15 @@ namespace NuGet.PackageManagement.UI {
         public static string Button_Retry {
             get {
                 return ResourceManager.GetString("Button_Retry", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Uninstall.
+        /// </summary>
+        public static string Button_Uninstall {
+            get {
+                return ResourceManager.GetString("Button_Uninstall", resourceCulture);
             }
         }
         
@@ -502,11 +502,29 @@ namespace NuGet.PackageManagement.UI {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Installed:.
+        /// </summary>
+        public static string Label_InstalledColon {
+            get {
+                return ResourceManager.GetString("Label_InstalledColon", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Installing:.
         /// </summary>
         public static string Label_InstalledPackages {
             get {
                 return ResourceManager.GetString("Label_InstalledPackages", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Version(s) - {0}.
+        /// </summary>
+        public static string Label_InstalledVersionsCount {
+            get {
+                return ResourceManager.GetString("Label_InstalledVersionsCount", resourceCulture);
             }
         }
         
@@ -673,11 +691,20 @@ namespace NuGet.PackageManagement.UI {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Learn about Options.
+        ///   Looks up a localized string similar to Learn about Install Options.
         /// </summary>
-        public static string Link_LearnAboutOptions {
+        public static string Link_LearnAboutInstallOptions {
             get {
-                return ResourceManager.GetString("Link_LearnAboutOptions", resourceCulture);
+                return ResourceManager.GetString("Link_LearnAboutInstallOptions", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Learn about Uninstall Options.
+        /// </summary>
+        public static string Link_LearnAboutUninstallOptions {
+            get {
+                return ResourceManager.GetString("Link_LearnAboutUninstallOptions", resourceCulture);
             }
         }
         

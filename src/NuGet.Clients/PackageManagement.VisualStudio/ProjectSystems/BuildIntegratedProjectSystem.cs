@@ -36,6 +36,7 @@ namespace NuGet.PackageManagement.VisualStudio
             : base(jsonConfigPath, msbuildProjectSystem)
         {
             InternalMetadata.Add(NuGetProjectMetadataKeys.UniqueName, uniqueName);
+            InternalMetadata.Add(NuGetProjectMetadataKeys.DTEUniqueName, envDTEProject.UniqueName);
 
             EnvDTEProject = envDTEProject;
         }

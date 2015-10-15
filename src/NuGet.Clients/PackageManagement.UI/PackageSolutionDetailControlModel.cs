@@ -3,10 +3,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
 using NuGet.ProjectManagement;
+using NuGet.Versioning;
 using NuGet.VisualStudio;
 
 namespace NuGet.PackageManagement.UI
@@ -15,41 +15,90 @@ namespace NuGet.PackageManagement.UI
     {
         private readonly ISolutionManager _solutionManager;
 
-        // list of all projects in the solution.
-        private List<PackageInstallationInfo> _allProjects;
-
-        // indicates that the model is updating the checkbox state. In this case,
-        // the CheckAllProject() & UncheckAllProject() should be no-op.
-        private bool _updatingCheckbox;
-
         private IEnumerable<IVsPackageManagerProvider> _packageManagerProviders;
-
-        // list of projects to be displayed in the UI. This list is created
-        // from _allProjects based on the selected version and the status
-        // of the "Show All" checkbox.
-        public List<PackageInstallationInfo> Projects { get; private set; }
-
-        private bool _actionEnabled;
-
-        // Indicates if the action button and preview button is enabled.
-        public bool ActionEnabled
-        {
-            get { return _actionEnabled; }
-            set
-            {
-                _actionEnabled = value;
-                OnPropertyChanged("ActionEnabled");
-            }
-        }
 
         public override bool IsSolution
         {
             get { return true; }
         }
 
-        protected override void OnSelectedVersionChanged()
+        protected override void OnCurrentPackageChanged()
         {
-            RefreshProjectList();
+            UpdateInstalledVersions();
+        }
+
+        public override void Refresh()
+        {
+            UpdateInstalledVersions();
+        }
+
+        private void UpdateInstalledVersions()
+        {
+            var hash = new HashSet<NuGetVersion>();
+
+            ForeachProject((project) =>
+            {
+                var installedVersion = GetInstalledPackage(project.Project, Id);
+                if (installedVersion != null)
+                {
+                    project.InstalledVersion = installedVersion.PackageIdentity.Version;
+                    hash.Add(installedVersion.PackageIdentity.Version);
+                }
+                else
+                {
+                    project.InstalledVersion = null;
+                }
+            });
+
+            InstalledVersionsCount = hash.Count;
+        }
+
+        private NuGetVersion GetInstalledVersion(NuGetProject project, string packageId)
+        {
+            return NuGetUIThreadHelper.JoinableTaskFactory.Run(async delegate
+            {
+                var installedPackages = await project.GetInstalledPackagesAsync(CancellationToken.None);
+                var installedPackage = installedPackages
+                    .Where(p => StringComparer.OrdinalIgnoreCase.Equals(p.PackageIdentity.Id, packageId))
+                    .FirstOrDefault();
+
+                if (installedPackage != null)
+                {
+                    return installedPackage.PackageIdentity.Version;
+                }
+                else
+                {
+                    return null;
+                }
+            });
+        }
+
+        private void ForeachProject(Action<ProjectNodeModel> action)
+        {
+            var queue = new Queue<NodeModelBase>();
+            foreach (var node in ProjectNodes)
+            {
+                queue.Enqueue(node);
+            }
+
+            while (queue.Count > 0)
+            {
+                var node = queue.Dequeue();
+                if (node is ProjectNodeModel)
+                {
+                    var projectNode = (ProjectNodeModel)node;
+                    action(projectNode);
+                }
+                else
+                {
+                    // node is FolderNodeModel
+                    var folderNode = (FolderNodeModel)node;
+                    foreach (var child in folderNode.Children)
+                    {
+                        queue.Enqueue(child);
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -70,51 +119,51 @@ namespace NuGet.PackageManagement.UI
 
         protected override void CreateVersions()
         {
-            if (SelectedAction == Resources.Action_Consolidate ||
-                SelectedAction == Resources.Action_Uninstall)
+            _versions = new List<VersionForDisplay>();
+            var allVersions = _allPackageVersions.OrderByDescending(v => v);
+            var latestPrerelease = allVersions.FirstOrDefault(v => v.IsPrerelease);
+            var latestStableVersion = allVersions.FirstOrDefault(v => !v.IsPrerelease);
+
+            if (latestPrerelease != null
+                && (latestStableVersion == null || latestPrerelease > latestStableVersion))
             {
-                _versions = _allProjects.Select(project => GetInstalledPackage(project.NuGetProject, Id))
-                    .Where(package => package != null)
-                    .Select(p => p.PackageIdentity.Version)
-                    .OrderByDescending(version => version)
-                    .Distinct()
-                    .Select(version => new VersionForDisplay(version, string.Empty))
-                    .ToList();
+                _versions.Add(new VersionForDisplay(latestPrerelease, Resources.Version_LatestPrerelease));
             }
-            else if (SelectedAction == Resources.Action_Install
-                     ||
-                     SelectedAction == Resources.Action_Update)
+
+            if (latestStableVersion != null)
             {
-                _versions = new List<VersionForDisplay>();
-                var allVersions = _allPackageVersions.OrderByDescending(v => v);
-                var latestPrerelease = allVersions.FirstOrDefault(v => v.IsPrerelease);
-                var latestStableVersion = allVersions.FirstOrDefault(v => !v.IsPrerelease);
+                _versions.Add(new VersionForDisplay(latestStableVersion, Resources.Version_LatestStable));
+            }
 
-                if (latestPrerelease != null
-                    && (latestStableVersion == null || latestPrerelease > latestStableVersion))
-                {
-                    _versions.Add(new VersionForDisplay(latestPrerelease, Resources.Version_LatestPrerelease));
-                }
+            // add a separator
+            if (_versions.Count > 0)
+            {
+                _versions.Add(null);
+            }
 
-                if (latestStableVersion != null)
-                {
-                    _versions.Add(new VersionForDisplay(latestStableVersion, Resources.Version_LatestStable));
-                }
-
-                // add a separator
-                if (_versions.Count > 0)
-                {
-                    _versions.Add(null);
-                }
-
-                foreach (var version in allVersions)
-                {
-                    _versions.Add(new VersionForDisplay(version, string.Empty));
-                }
+            foreach (var version in allVersions)
+            {
+                _versions.Add(new VersionForDisplay(version, string.Empty));
             }
 
             SelectVersion();
             OnPropertyChanged("Versions");
+        }
+
+        // the count of different installed versions
+        private int _installedVersionsCount;
+
+        public int InstalledVersionsCount
+        {
+            get
+            {
+                return _installedVersionsCount;
+            }
+            set
+            {
+                _installedVersionsCount = value;
+                OnPropertyChanged(nameof(InstalledVersionsCount));
+            }
         }
 
         public PackageSolutionDetailControlModel(
@@ -129,7 +178,81 @@ namespace NuGet.PackageManagement.UI
             _solutionManager.NuGetProjectRemoved += (_, __) => RefreshProjectListAfterProjectAddedRemovedOrRenamed();
             _solutionManager.NuGetProjectRenamed += (_, __) => RefreshProjectListAfterProjectAddedRemovedOrRenamed();
             _packageManagerProviders = packageManagerProviders;
-            RefreshAllProjectList();
+
+            CreateSolutionNode();
+        }
+
+        // The solutin hierarchy. It only contains the solution node.
+        private List<NodeModelBase> _projectNodes;
+
+        public IEnumerable<NodeModelBase> ProjectNodes
+        {
+            get
+            {
+                return _projectNodes;
+            }
+            set
+            {
+                _projectNodes = value.ToList();
+                OnPropertyChanged(nameof(ProjectNodes));
+            }
+        }
+
+        private void CreateSolutionNode()
+        {
+            var nodes = _solutionManager.GetSolutionHierarchy();
+
+            var nodeModels = new List<NodeModelBase>();
+            foreach (var node in nodes)
+            {
+                var nodeModel = CreateNodeModel(node);
+                nodeModels.Add(nodeModel);
+            }
+
+            nodeModels.Sort(NodeComparer.Default);
+
+            // create the solution node
+            var solutionNode = new FolderNodeModel(
+                "solution",
+                null,
+                nodeModels);
+
+            ProjectNodes = new List<NodeModelBase> { solutionNode };
+        }
+
+        private NodeModelBase CreateNodeModel(NodeBase node)
+        {
+            var projectNode = node as ProjectNode;
+            if (projectNode != null)
+            {
+                var name = projectNode.Project.GetMetadata<string>(NuGetProjectMetadataKeys.Name);
+                var dteUniqueName = projectNode.Project.GetMetadata<string>(
+                    NuGetProjectMetadataKeys.DTEUniqueName);
+                var icon = ProjectUtilities.GetImage(dteUniqueName);
+                var projectNodeModel = new ProjectNodeModel(
+                    name,
+                    projectNode.Project,
+                    icon);
+                return projectNodeModel;
+            }
+            else
+            {
+                // the node is a project node, so it must be a folder node.
+                var folderNode = (FolderNode)node;
+                List<NodeModelBase> children = new List<NodeModelBase>();
+                foreach (var child in folderNode.Children)
+                {
+                    var childModel = CreateNodeModel(child);
+                    children.Add(childModel);
+                }
+
+                children.Sort(NodeComparer.Default);
+                var folderNodeModel = new FolderNodeModel(
+                    folderNode.Name,
+                    folderNode.UniqueName,
+                    children);
+                return folderNodeModel;
+            }
         }
 
         // Refresh the project list after a project is added/removed/renamed.
@@ -137,31 +260,9 @@ namespace NuGet.PackageManagement.UI
         {
             _nugetProjects = _solutionManager.GetNuGetProjects();
 
+            /* !!!
             RefreshAllProjectList();
-            RefreshProjectList();
-        }
-
-        // Refresh the _allProjects list.
-        private void RefreshAllProjectList()
-        {
-            _allProjects = _nugetProjects.Select(p => new PackageInstallationInfo(p, null, true))
-                .ToList();
-            _allProjects.Sort();
-            _allProjects.ForEach(p =>
-            {
-                p.SelectedChanged += (sender, e) =>
-                {
-                    UpdateActionEnabled();
-                    UpdateSelectCheckbox();
-                };
-            });
-        }
-
-        private void UpdateActionEnabled()
-        {
-            ActionEnabled =
-                Projects != null &&
-                Projects.Any(i => i.Selected);
+            RefreshProjectList(); */
         }
 
         private static bool IsInstalled(NuGetProject project, string id)
@@ -170,54 +271,7 @@ namespace NuGet.PackageManagement.UI
             return packageReference != null;
         }
 
-        protected override bool CanInstall()
-        {
-            var canInstallInProjects = _nugetProjects
-                .Any(project => { return !IsInstalled(project, Id); });
-
-            return canInstallInProjects;
-        }
-
-        protected override bool CanUninstall()
-        {
-            var canUninstallFromProjects = _nugetProjects
-                .Any(project => { return IsInstalled(project, Id); });
-
-            return canUninstallFromProjects;
-        }
-
-        protected override bool CanUpgrade()
-        {
-            // In solution-level management, we don't separate upgrade from downgrade because
-            // an update could be an upgrade for one project and a downgrade for another
-            return false;
-        }
-
-        protected override bool CanDowngrade()
-        {
-            // In solution-level management, we don't separate upgrade from downgrade because
-            // an update could be an upgrade for one project and a downgrade for another
-            return false;
-        }
-
-        protected override bool CanUpdate()
-        {
-            var canUpdateInProjects = _nugetProjects
-                .Any(project => { return IsInstalled(project, Id) && _allPackageVersions.Count >= 2; });
-
-            return canUpdateInProjects;
-        }
-
-        protected override bool CanConsolidate()
-        {
-            var installedVersions = _nugetProjects
-                .Select(project => GetInstalledPackage(project, Id))
-                .Where(package => package != null)
-                .Select(package => package.PackageIdentity.Version)
-                .Distinct();
-            return installedVersions.Count() >= 2;
-        }
-
+        /* !!!
         protected override async void OnCurrentPackageChanged()
         {
             if (_searchResultPackage == null)
@@ -235,88 +289,7 @@ namespace NuGet.PackageManagement.UI
                         p.NuGetProject);
                 }
             }
-        }
-
-        private void RefreshProjectList()
-        {
-            // update properties of _allProject list
-            _allProjects.ForEach(p =>
-                {
-                    var installed = GetInstalledPackage(p.NuGetProject, Id);
-                    if (installed != null)
-                    {
-                        p.Version = installed.PackageIdentity.Version;
-                    }
-                    else
-                    {
-                        p.Version = null;
-                    }
-                });
-
-            if (SelectedAction == Resources.Action_Consolidate)
-            {
-                // only projects that have the package installed, but with a
-                // different version, are enabled.
-                // The project with the same version installed is not enabled.
-                _allProjects.ForEach(p =>
-                    {
-                        var installed = GetInstalledPackage(p.NuGetProject, Id);
-                        p.Enabled = installed != null &&
-                                    installed.PackageIdentity.Version != SelectedVersion.Version;
-                    });
-            }
-            else if (SelectedAction == Resources.Action_Update)
-            {
-                // only projects that have the package of a different version installed are enabled
-                _allProjects.ForEach(p =>
-                    {
-                        var installed = GetInstalledPackage(p.NuGetProject, Id);
-                        p.Enabled = installed != null &&
-                                    installed.PackageIdentity.Version != SelectedVersion.Version;
-                    });
-            }
-            else if (SelectedAction == Resources.Action_Install)
-            {
-                // only projects that do not have the package installed are enabled
-                _allProjects.ForEach(p =>
-                    {
-                        var installed = GetInstalledPackage(p.NuGetProject, Id);
-                        p.Enabled = installed == null;
-                    });
-            }
-            else if (SelectedAction == Resources.Action_Uninstall)
-            {
-                // only projects that have the selected version installed are enabled
-                _allProjects.ForEach(p =>
-                    {
-                        var installed = GetInstalledPackage(p.NuGetProject, Id);
-                        p.Enabled = installed != null &&
-                                    installed.PackageIdentity.Version == SelectedVersion.Version;
-                    });
-            }
-
-            // update Selected properties
-            _allProjects.ForEach(p =>
-                {
-                    if (!p.Enabled)
-                    {
-                        p.Selected = false;
-                    }
-                });
-
-            if (ShowAll)
-            {
-                Projects = _allProjects;
-            }
-            else
-            {
-                Projects = _allProjects.Where(p => p.Enabled).ToList();
-            }
-
-            UpdateActionEnabled();
-            UpdateSelectCheckbox();
-            OnPropertyChanged("Projects");
-        }
+        } */
 
         private bool? _checkboxState;
 
@@ -342,6 +315,8 @@ namespace NuGet.PackageManagement.UI
                 OnPropertyChanged("SelectCheckboxText");
             }
         }
+
+        /* !!!
 
         private void UpdateSelectCheckbox()
         {
@@ -406,29 +381,34 @@ namespace NuGet.PackageManagement.UI
                 });
 
             OnPropertyChanged("Projects");
-        }
+        } */
 
-        private bool _showAll;
-
-        // The checked state of the Show All check box
-        public bool ShowAll
+        public override IEnumerable<NuGetProject> GetSelectedProjects(NuGetProjectActionType action)
         {
-            get { return _showAll; }
-            set
-            {
-                _showAll = value;
+            var selectedProjects = new List<NuGetProject>();
+            ForeachProject(
+                (project) =>
+                {
+                    if (project.IsSelected == false)
+                    {
+                        return;
+                    }
 
-                RefreshProjectList();
-            }
-        }
+                    if (action == NuGetProjectActionType.Install)
+                    {
+                        selectedProjects.Add(project.Project);
+                    }
+                    else
+                    {
+                        // for uninstall, the package must be already installed
+                        if (project.InstalledVersion != null)
+                        {
+                            selectedProjects.Add(project.Project);
+                        }
+                    }
+                });
 
-        public override IEnumerable<NuGetProject> SelectedProjects
-        {
-            get
-            {
-                return _allProjects.Where(p => p.Selected)
-                    .Select(p => p.NuGetProject);
-            }
+            return selectedProjects;
         }
     }
 }
