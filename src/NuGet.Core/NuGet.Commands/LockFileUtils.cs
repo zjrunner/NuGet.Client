@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
+using NuGet.Client;
 using NuGet.ContentModel;
 using NuGet.Frameworks;
 using NuGet.Packaging;
@@ -24,11 +25,11 @@ namespace NuGet.Commands
         }
 
         public static LockFileTargetLibrary CreateLockFileTargetLibrary(
-            LockFileLibrary library, 
-            LocalPackageInfo package, 
-            RestoreTargetGraph targetGraph, 
-            VersionFolderPathResolver defaultPackagePathResolver, 
-            string correctedPackageName, 
+            LockFileLibrary library,
+            LocalPackageInfo package,
+            RestoreTargetGraph targetGraph,
+            VersionFolderPathResolver defaultPackagePathResolver,
+            string correctedPackageName,
             NuGetFramework targetFrameworkOverride)
         {
             var lockFileLib = new LockFileTargetLibrary();
@@ -167,6 +168,19 @@ namespace NuGet.Commands
                 lockFileLib.NativeLibraries = nativeGroup.Items.Select(p => new LockFileItem(p.Path)).ToList();
             }
 
+            // Shared content items
+            var sharedCriteria = targetGraph.Conventions.Criteria.ForFramework(framework);
+
+            var sharedContentGroups = contentItems.FindItemGroups(targetGraph.Conventions.Patterns.SharedContentFiles);
+
+            // Multiple groups can match the same framework, find all of them
+            var sharedGroupsForFramwork = GetContentGroupsForFramework(
+                lockFileLib, 
+                framework, 
+                sharedContentGroups);
+
+            lockFileLib.SharedContent = GetSharedLockFileGroup(framework, nuspec, sharedGroupsForFramwork);
+
             // COMPAT: Support lib/contract so older packages can be consumed
             var contractPath = "lib/contract/" + package.Id + ".dll";
             var hasContract = files.Any(path => path == contractPath);
@@ -190,6 +204,152 @@ namespace NuGet.Commands
             }
 
             return lockFileLib;
+        }
+
+        /// <summary>
+        /// Get all content groups that have the nearest TxM
+        /// </summary>
+        private static List<ContentItemGroup> GetContentGroupsForFramework(
+            LockFileTargetLibrary lockFileLib,
+            NuGetFramework framework,
+            IEnumerable<ContentItemGroup> contentGroups)
+        {
+            var groups = new List<ContentItemGroup>();
+
+            // Find all unique frameworks
+            var frameworks = contentGroups.Select(
+                group =>
+                    (NuGetFramework)group.Properties[ManagedCodeConventions.PropertyNames.TargetFrameworkMoniker])
+                .Distinct()
+                .ToList();
+
+            // Find the best framework
+            var nearestFramework =
+                NuGetFrameworkUtility.GetNearest<NuGetFramework>(frameworks, framework, item => item);
+
+            // If a compatible framework exists get all groups with that framework
+            if (nearestFramework != null)
+            {
+                var sharedGroupsWithSameFramework = contentGroups.Where(
+                    group =>
+                    nearestFramework.Equals(
+                        (NuGetFramework)group.Properties[ManagedCodeConventions.PropertyNames.TargetFrameworkMoniker])
+                    );
+
+                groups.AddRange(sharedGroupsWithSameFramework);
+            }
+
+            return groups;
+        }
+
+        /// <summary>
+        /// Apply build actions from the nuspec to items from the shared folder.
+        /// </summary>
+        private static List<LockFileItem> GetSharedLockFileGroup(
+            NuGetFramework framework,
+            NuspecReader nuspec,
+            List<ContentItemGroup> sharedContentGroups)
+        {
+            var results = new List<LockFileItem>(sharedContentGroups.Count);
+
+            // Read the shared section of the nuspec
+            var nuspecSharedFiles = nuspec.GetSharedFiles().ToList();
+
+            foreach (var group in sharedContentGroups)
+            {
+                // Create lock file entries for each item in the shared folder
+                foreach (var item in group.Items)
+                {
+                    // defaults
+                    var action = PackagingConstants.SharedContentDefaultBuildAction;
+                    var copyToOutput = false;
+                    var flatten = false;
+
+                    foreach (var filesEntry in nuspecSharedFiles)
+                    {
+                        // TODO: add globbing
+                        if (item.Path.Equals("shared/" + filesEntry.Include, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (!string.IsNullOrEmpty(filesEntry.BuildAction))
+                            {
+                                action = filesEntry.BuildAction;
+                            }
+
+                            if (filesEntry.CopyToOutput.HasValue)
+                            {
+                                copyToOutput = filesEntry.CopyToOutput.Value;
+                            }
+
+                            if (filesEntry.Flatten.HasValue)
+                            {
+                                flatten = filesEntry.Flatten.Value;
+                            }
+                        }
+                    }
+
+                    // Add attributes to the lock file item
+                    var lockFileItem = new LockFileItem(item.Path);
+
+                    // Do not write out properties for _._
+                    if (!item.Path.EndsWith("/_._", StringComparison.Ordinal))
+                    {
+                        lockFileItem.Properties.Add("buildAction", action);
+                        lockFileItem.Properties.Add("copyToOutput", copyToOutput.ToString());
+
+                        if (copyToOutput)
+                        {
+                            string destination = null;
+
+                            if (flatten)
+                            {
+                                destination = Path.GetFileName(lockFileItem.Path);
+                            }
+                            else
+                            {
+                                // Find path relative to the TxM
+                                // Ex: shared/cs/net45/config/config.xml -> config/config.xml
+                                destination = GetSharedPathRelativeToFrameworkFolder(item.Path);
+                            }
+
+                            lockFileItem.Properties.Add("outputPath", destination);
+                        }
+
+                        // Add the pp transform file if one exists
+                        if (lockFileItem.Path.EndsWith(".pp", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var destination = lockFileItem.Path.Substring(0, lockFileItem.Path.Length - 3);
+                            destination = GetSharedPathRelativeToFrameworkFolder(destination);
+
+                            lockFileItem.Properties.Add("ppOutputPath", destination);
+                        }
+
+                        // Add the language from the directory path
+                        lockFileItem.Properties.Add(
+                            "codeLanguage", 
+                            (string)group.Properties[ManagedCodeConventions.PropertyNames.CodeLanguage]);
+                    }
+
+                    results.Add(lockFileItem);
+                }
+            }
+
+            return results;
+        }
+
+        // Find path relative to the TxM
+        // Ex: shared/cs/net45/config/config.xml -> config/config.xml
+        // Ex: shared/any/any/config/config.xml -> config/config.xml
+        private static string GetSharedPathRelativeToFrameworkFolder(string itemPath)
+        {
+            var parts = itemPath.Split('/');
+
+            if (parts.Length > 3)
+            {
+                return string.Join("/", parts.Skip(3));
+            }
+
+            Debug.Fail("Unable to get relative path: " + itemPath);
+            return itemPath;
         }
 
         private static bool HasItems(ContentItemGroup compileGroup)

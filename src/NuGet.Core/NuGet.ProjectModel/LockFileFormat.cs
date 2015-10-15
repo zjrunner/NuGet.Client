@@ -35,6 +35,7 @@ namespace NuGet.ProjectModel
         private const string RuntimeProperty = "runtime";
         private const string CompileProperty = "compile";
         private const string NativeProperty = "native";
+        private const string SharedProperty = "shared";
         private const string ResourceProperty = "resource";
         private const string TypeProperty = "type";
 
@@ -296,6 +297,13 @@ namespace NuGet.ProjectModel
                 json[NativeProperty] = WriteObject(ordered, WriteFileItem);
             }
 
+            if (library.SharedContent.Count > 0)
+            {
+                var ordered = library.SharedContent.OrderBy(assembly => assembly.Path);
+
+                json[SharedProperty] = WriteObject(ordered, WriteFileItem);
+            }
+
             return new JProperty(library.Name + "/" + library.Version.ToNormalizedString(), json);
         }
 
@@ -357,7 +365,21 @@ namespace NuGet.ProjectModel
         {
             return new JProperty(
                 item.Path,
-               new JObject(item.Properties.Select(x => new JProperty(x.Key, x.Value))));
+                new JObject(item.Properties.OrderBy(prop => prop.Key).Select(x =>
+                {
+                    if (Boolean.TrueString.Equals(x.Value, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return new JProperty(x.Key, true);
+                    }
+                    else if (Boolean.FalseString.Equals(x.Value, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return new JProperty(x.Key, false);
+                    }
+                    else
+                    {
+                        return new JProperty(x.Key, x.Value);
+                    }
+                })));
         }
 
         private static IList<TItem> ReadArray<TItem>(JArray json, Func<JToken, TItem> readItem)

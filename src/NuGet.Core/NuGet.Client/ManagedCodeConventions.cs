@@ -37,6 +37,10 @@ namespace NuGet.Client
         private static readonly ContentPropertyDefinition MSBuildProperty = new ContentPropertyDefinition(PropertyNames.MSBuild, fileExtensions: new[] { ".targets", ".props" });
         private static readonly ContentPropertyDefinition SatelliteAssemblyProperty = new ContentPropertyDefinition(PropertyNames.SatelliteAssembly, fileExtensions: new[] { ".resources.dll" });
 
+        private static readonly ContentPropertyDefinition CodeLanguageProperty = new ContentPropertyDefinition(
+            PropertyNames.CodeLanguage,
+            parser: CodeLanguage_Parser);
+
         private RuntimeGraph _runtimeGraph;
 
         public ManagedCodeCriteria Criteria { get; }
@@ -54,6 +58,7 @@ namespace NuGet.Client
             props[LocaleProperty.Name] = LocaleProperty;
             props[MSBuildProperty.Name] = MSBuildProperty;
             props[SatelliteAssemblyProperty.Name] = SatelliteAssemblyProperty;
+            props[CodeLanguageProperty.Name] = CodeLanguageProperty;
 
             props[PropertyNames.RuntimeIdentifier] = new ContentPropertyDefinition(
                 PropertyNames.RuntimeIdentifier,
@@ -84,6 +89,12 @@ namespace NuGet.Client
                 }
                 return false;
             }
+        }
+
+        private static object CodeLanguage_Parser(string name)
+        {
+            // Code language values must be alpha numeric.
+            return name.All(c => char.IsLetterOrDigit(c)) ? name : null;
         }
 
         private static object Locale_Parser(string name)
@@ -249,6 +260,11 @@ namespace NuGet.Client
             /// </summary>
             public PatternSet MSBuildFiles { get; }
 
+            /// <summary>
+            /// Pattern used to identify shared content files
+            /// </summary>
+            public PatternSet SharedContentFiles { get; }
+
             internal ManagedCodePatterns(ManagedCodeConventions conventions)
             {
                 AnyTargettedFile = new PatternSet(
@@ -340,6 +356,17 @@ namespace NuGet.Client
                             { "tfm", new NuGetFramework(FrameworkConstants.FrameworkIdentifiers.Net, FrameworkConstants.EmptyVersion) }
                         })
                     });
+
+                SharedContentFiles = new PatternSet(
+                    conventions.Properties,
+                    groupPatterns: new PatternDefinition[]
+                    {
+                        "shared/{codeLanguage}/{tfm}/{any?}"
+                    },
+                    pathPatterns: new PatternDefinition[]
+                    {
+                        "shared/{codeLanguage}/{tfm}/{any?}"
+                    });
             }
         }
 
@@ -352,6 +379,7 @@ namespace NuGet.Client
             public static readonly string Locale = "locale";
             public static readonly string MSBuild = "msbuild";
             public static readonly string SatelliteAssembly = "satelliteAssembly";
+            public static readonly string CodeLanguage = "codeLanguage";
         }
     }
 }
