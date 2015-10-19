@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Xml.Linq;
 using NuGet.Logging;
 
@@ -22,10 +21,9 @@ namespace NuGet.Commands
         };
 
         /// <summary>
-        /// Gets a boolean indicating if the necessary MSBuild file could be generated
+        /// Gets a boolean indicating if the necessary MSBuild file could be generated.
         /// </summary>
         public bool Success { get; }
-
         public string ProjectName { get; }
         public string ProjectDirectory { get; }
 
@@ -44,7 +42,12 @@ namespace NuGet.Commands
         /// </summary>
         public IEnumerable<string> Targets { get; }
 
-        public MSBuildRestoreResult(string projectName, string projectDirectory)
+        public static MSBuildRestoreResult Failed(string projectName, string projectDirectory)
+        {
+            return new MSBuildRestoreResult(projectName, projectDirectory);
+        }
+
+        private MSBuildRestoreResult(string projectName, string projectDirectory)
         {
             Success = false;
             ProjectName = projectName;

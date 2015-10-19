@@ -4,9 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using NuGet.Frameworks;
-using NuGet.LibraryModel;
 using NuGet.Versioning;
 
 namespace NuGet.ProjectModel

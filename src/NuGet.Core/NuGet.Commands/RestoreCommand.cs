@@ -55,18 +55,42 @@ namespace NuGet.Commands
 
             bool relockFile = false;
 
-            if (_request.ExistingLockFile != null
-                && _request.ExistingLockFile.IsLocked
-                && !_request.ExistingLockFile.IsValidForPackageSpec(_request.Project))
-            {
-                // The lock file was locked, but the project.json is out of date
-                relockFile = true;
-
-                _request.ExistingLockFile.IsLocked = false;
-                _log.LogInformation(Strings.Log_LockFileOutOfDate);
-            }
-
             var context = new RemoteWalkContext();
+
+            if (_request?.ExistingLockFile.IsLocked == true)
+            {
+                if (!_request.ExistingLockFile.IsValidForPackageSpec(_request.Project))
+                {
+                    // The lock file was locked, but the project.json is out of date
+                    relockFile = true;
+
+                    _request.ExistingLockFile.IsLocked = false;
+                    _log.LogInformation(Strings.Log_LockFileOutOfDate);
+                }
+                else
+                {
+                    foreach (var library in _request.ExistingLockFile.Libraries.Where(l => l.IsPackage))
+                    {
+                        // download all the packages
+                    }
+
+                    RestoreMSBuildFiles(_request.Project,)
+                    //var lockedMsbuild = RestoreMSBuildFiles(_request.Project,
+                    //    graphs,
+                    //    localRepository,
+                    //    context.PackageFileCache);
+
+                    //return new RestoreResult(
+                    //                    _success,
+                    //                    graphs,
+                    //                    checkResults,
+                    //                    lockFile,
+                    //                    _request.ExistingLockFile,
+                    //                    projectLockFilePath,
+                    //                    relockFile,
+                    //                    lockedMsbuild);
+                }
+            }
 
             var graphs = await ExecuteRestoreAsync(localRepository, context, token);
 
@@ -131,7 +155,7 @@ namespace NuGet.Commands
             }
 
             // Generate Targets/Props files
-            var msbuild = RestoreMSBuildFiles(_request.Project, graphs, localRepository, context);
+            var msbuild = RestoreMSBuildFiles(_request.Project, graphs, localRepository, context.PackageFileCache);
 
             return new RestoreResult(
                 _success,
@@ -397,13 +421,13 @@ namespace NuGet.Commands
         private MSBuildRestoreResult RestoreMSBuildFiles(PackageSpec project,
             IEnumerable<RestoreTargetGraph> targetGraphs,
             NuGetv3LocalRepository repository,
-            RemoteWalkContext context)
+            ConcurrentDictionary<PackageIdentity, IList<string>> packageFileCache)
         {
             // Get the project graph
             var projectFrameworks = project.TargetFrameworks.Select(f => f.FrameworkName).ToList();
             if (projectFrameworks.Count > 1 || !targetGraphs.Any())
             {
-                return new MSBuildRestoreResult(project.Name, project.BaseDirectory);
+                return MSBuildRestoreResult.Failed(project.Name, project.BaseDirectory);
             }
 
             var graph = targetGraphs
@@ -420,7 +444,7 @@ namespace NuGet.Commands
 
                 var packageIdentity = new PackageIdentity(library.Key.Name, library.Key.Version);
                 IList<string> packageFiles;
-                context.PackageFileCache.TryGetValue(packageIdentity, out packageFiles);
+                packageFileCache.TryGetValue(packageIdentity, out packageFiles);
 
                 if (packageFiles != null)
                 {

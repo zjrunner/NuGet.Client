@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using NuGet.LibraryModel;
 using NuGet.Versioning;
 
 namespace NuGet.ProjectModel
@@ -45,6 +46,29 @@ namespace NuGet.ProjectModel
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Returns true of the library represents a nuget package.
+        /// </summary>
+        public bool IsPackage
+        {
+            get
+            {
+                return string.Equals(Type, LibraryTypes.Package, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>
+        /// Returns true if the library represents an XProj or an MsBuild project.
+        /// </summary>
+        public bool IsProject
+        {
+            get
+            {
+                return string.Equals(Type, LibraryTypes.Project, StringComparison.OrdinalIgnoreCase) ||
+                       string.Equals(Type, LibraryTypes.ExternalProject, StringComparison.OrdinalIgnoreCase);
+            }
         }
 
         public override bool Equals(object obj)

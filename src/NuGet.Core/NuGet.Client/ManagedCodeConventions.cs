@@ -29,7 +29,7 @@ namespace NuGet.Client
             parser: Locale_Parser);
 
         private static readonly ContentPropertyDefinition AnyProperty = new ContentPropertyDefinition(
-            PropertyNames.AnyValue, 
+            PropertyNames.AnyValue,
             parser: o => o); // Identity parser, all strings are valid for any
         private static readonly ContentPropertyDefinition AssemblyProperty = new ContentPropertyDefinition(PropertyNames.ManagedAssembly,
             parser: o => o.Equals("_._", StringComparison.Ordinal) ? o : null, // Accept "_._" as a pseudo-assembly
@@ -343,15 +343,15 @@ namespace NuGet.Client
             }
         }
 
-        public static class PropertyNames
+        private static class PropertyNames
         {
-            public static readonly string TargetFrameworkMoniker = "tfm";
-            public static readonly string RuntimeIdentifier = "rid";
-            public static readonly string AnyValue = "any";
-            public static readonly string ManagedAssembly = "assembly";
-            public static readonly string Locale = "locale";
-            public static readonly string MSBuild = "msbuild";
-            public static readonly string SatelliteAssembly = "satelliteAssembly";
+            public const string TargetFrameworkMoniker = "tfm";
+            public const string RuntimeIdentifier = "rid";
+            public const string AnyValue = "any";
+            public const string ManagedAssembly = "assembly";
+            public const string Locale = "locale";
+            public const string MSBuild = "msbuild";
+            public const string SatelliteAssembly = "satelliteAssembly";
         }
     }
 }

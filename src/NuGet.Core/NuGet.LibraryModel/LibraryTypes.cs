@@ -6,7 +6,7 @@ namespace NuGet.LibraryModel
     public static class LibraryTypes
     {
         /// <summary>
-        /// Indicates that the library comes from compiling an XRE-based Project
+        /// Indicates that the library comes from compiling an XPROJ Project
         /// </summary>
         public const string Project = "Project";
 
