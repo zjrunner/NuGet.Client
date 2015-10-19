@@ -126,6 +126,8 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SettingsToLegacySettings.cs" />
     <Compile Include="StrictSemanticVersionValidationRule.cs" />
+    <Compile Include="TransitiveRestoreProjectContext.cs" />
+    <Compile Include="TransitiveRestoreSolutionContext.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="AnalysisResources.resx">

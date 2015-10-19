@@ -48,7 +48,7 @@ namespace NuGet.CommandLine.Test
                 "help spec",
                 waitForExit: true);
 
-            // Assert
+            // Assert   
             Assert.Equal(0, r.Item1);
             Assert.DoesNotContain("-ConfigFile", r.Item2, StringComparison.OrdinalIgnoreCase);
         }

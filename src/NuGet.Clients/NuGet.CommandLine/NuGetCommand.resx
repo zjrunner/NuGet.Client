@@ -5282,4 +5282,7 @@ nuget add \\foo\packages \\bar\packages</value>
   <data name="ExpandDescription" xml:space="preserve">
     <value>If provided, a package added to offline feed is also expanded.</value>
   </data>
+  <data name="RestoreCommandUseExistingLockFile" xml:space="preserve">
+    <value>Skips resolving dependencies, and just downloads the packages written in the lock file</value>
+  </data>
 </root>

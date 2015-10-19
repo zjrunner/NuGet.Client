@@ -427,7 +427,8 @@ namespace NuGet.CommandLine.Test
                 repositoryPath,
                 "-solutionDir",
                 workingPath,
-                slnPath
+                slnPath,
+                //"-LaunchDebugger"
             };
 
             // Act
@@ -435,6 +436,7 @@ namespace NuGet.CommandLine.Test
                 nugetexe,
                 workingPath,
                 string.Join(" ", args),
+                timeOutInMilliseconds: int.MaxValue,
                 waitForExit: true);
 
             var test1Lock = new FileInfo(Path.Combine(projectDir1, "project.lock.json"));

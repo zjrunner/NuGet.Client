@@ -119,10 +119,11 @@ namespace NuGet.CommandLine.Test
                 // Assert
                 Assert.True(0 != r.Item1, r.Item2 + " " + r.Item3);
 
-                Assert.Equal(1, hitsByUrl["/index.json"]);
-                Assert.Equal(1, hitsByUrl2["/nuget"]);
+                AssertUrlHitCountError("/index.json", 1, hitsByUrl);
+                AssertUrlHitCountError("/nuget", 1, hitsByUrl2);
 
                 Assert.Equal(0, allPackages.Count());
+
                 Assert.Equal(0,
                     Directory.Exists(MachineCache.Default.Source) ?
                     Directory.GetFiles(MachineCache.Default.Source, "*.tmp").Count()
@@ -259,8 +260,8 @@ namespace NuGet.CommandLine.Test
                 // Assert
                 Assert.True(0 != r.Item1, r.Item2 + " " + r.Item3);
 
-                Assert.Equal(1, hitsByUrl["/index.json"]);
-                Assert.Equal(1, hitsByUrl2["/nuget"]);
+                AssertUrlHitCountError("/index.json", 1, hitsByUrl);
+                AssertUrlHitCountError("/nuget", 1, hitsByUrl2);
 
                 Assert.Equal(expectedPackages.Count, allPackages.Count());
 
@@ -309,7 +310,7 @@ namespace NuGet.CommandLine.Test
 
                 var expectedPackages = new HashSet<PackageIdentity>();
 
-                for (int i=0; i < testCount; i++)
+                for (int i = 0; i < testCount; i++)
                 {
                     var id = $"package{i}";
                     var version = $"1.0.{i}";
@@ -400,7 +401,7 @@ namespace NuGet.CommandLine.Test
 
                 foreach (var package in expectedPackages)
                 {
-                    Assert.True(allPackages.Any(p => p.Id == package.Id 
+                    Assert.True(allPackages.Any(p => p.Id == package.Id
                         && p.Version.ToNormalizedString() == package.Version.ToNormalizedString()));
                 }
 
@@ -866,7 +867,7 @@ namespace NuGet.CommandLine.Test
 
                 foreach (var url in hitsByUrl.Keys)
                 {
-                    Assert.True(1 == hitsByUrl[url], url);
+                    AssertUrlHitCountError(url, 1, hitsByUrl);
                 }
             }
         }
@@ -924,12 +925,13 @@ namespace NuGet.CommandLine.Test
 
                 // Assert
                 Assert.True(0 == r.Item1, r.Item2 + " " + r.Item3);
-                Assert.Equal(1, hitsByUrl["/index.json"]);
-                Assert.Equal(1, hitsByUrl["/reg/packagea/index.json"]);
+
+                AssertUrlHitCountError("/index.json", 1, hitsByUrl);
+                AssertUrlHitCountError("/reg/packagea/index.json", 1, hitsByUrl);
 
                 foreach (var url in hitsByUrl.Keys)
                 {
-                    Assert.True(1 == hitsByUrl[url], url);
+                    AssertUrlHitCountError(url, 1, hitsByUrl);
                 }
             }
         }
@@ -988,7 +990,7 @@ namespace NuGet.CommandLine.Test
 
                 foreach (var url in hitsByUrl.Keys)
                 {
-                    Assert.True(1 == hitsByUrl[url], url);
+                    AssertUrlHitCountError(url, 1, hitsByUrl);
                 }
             }
         }
@@ -1044,8 +1046,9 @@ namespace NuGet.CommandLine.Test
 
                 // Assert
                 Assert.True(0 == r.Item1, r.Item2 + " " + r.Item3);
-                Assert.Equal(1, hitsByUrl["/index.json"]);
-                Assert.Equal(1, hitsByUrl["/reg/packagea/index.json"]);
+
+                AssertUrlHitCountError("/index.json", 1, hitsByUrl);
+                AssertUrlHitCountError("/reg/packagea/index.json", 1, hitsByUrl);
 
                 foreach (var url in hitsByUrl.Keys)
                 {
@@ -1108,8 +1111,8 @@ namespace NuGet.CommandLine.Test
                 // Assert
                 Assert.True(0 == r.Item1, r.Item2 + " " + r.Item3);
 
-                Assert.Equal(1, hitsByUrl["/index.json"]);
-                Assert.Equal(1, hitsByUrl2["/nuget"]);
+                AssertUrlHitCountError("/index.json", 1, hitsByUrl);
+                AssertUrlHitCountError("/nuget", 1, hitsByUrl2);
             }
         }
 
@@ -1169,12 +1172,12 @@ namespace NuGet.CommandLine.Test
 
                 foreach (var url in hitsByUrl.Keys)
                 {
-                    Assert.True(1 == hitsByUrl[url], url);
+                    AssertUrlHitCountError(url, 1, hitsByUrl);
                 }
 
                 foreach (var url in hitsByUrl2.Keys)
                 {
-                    Assert.True(1 == hitsByUrl2[url], url);
+                    AssertUrlHitCountError(url,1 , hitsByUrl);
                 }
             }
         }
@@ -1241,12 +1244,12 @@ namespace NuGet.CommandLine.Test
 
                 foreach (var url in hitsByUrl.Keys)
                 {
-                    Assert.True(1 == hitsByUrl[url], url);
+                    AssertUrlHitCountError(url, 1, hitsByUrl);
                 }
 
                 foreach (var url in hitsByUrl2.Keys)
                 {
-                    Assert.True(1 == hitsByUrl2[url], url);
+                    AssertUrlHitCountError(url, 1, hitsByUrl2);
                 }
             }
         }
@@ -1295,13 +1298,14 @@ namespace NuGet.CommandLine.Test
 
                 // Assert
                 Assert.True(0 == r.Item1, r.Item2 + " " + r.Item3);
-                Assert.Equal(1, hitsByUrl["/index.json"]);
 
-                // PackageE is hit twice, once from packages.config and the other from project.json. 
+                AssertUrlHitCountError("/index.json", 1, hitsByUrl);
+
+                // PackageE is hit twice, once from packages.config and the other from project.json.
                 // The rest should only be hit once.
                 foreach (var url in hitsByUrl.Keys.Where(s => s != "/reg/packagee/index.json"))
                 {
-                    Assert.True(1 == hitsByUrl[url], url);
+                    AssertUrlHitCountError(url, 1, hitsByUrl);
                 }
             }
         }
@@ -1353,11 +1357,12 @@ namespace NuGet.CommandLine.Test
 
                 // Assert
                 Assert.True(0 == r.Item1, r.Item2 + " " + r.Item3);
-                Assert.Equal(1, hitsByUrl["/index.json"]);
+
+                AssertUrlHitCountError("/index.json", 1, hitsByUrl);
 
                 foreach (var url in hitsByUrl.Keys)
                 {
-                    Assert.True(1 == hitsByUrl[url], url);
+                    AssertUrlHitCountError(url, 1, hitsByUrl);
                 }
             }
         }
@@ -1408,11 +1413,11 @@ namespace NuGet.CommandLine.Test
 
                 // Assert
                 Assert.True(0 == r.Item1, r.Item2 + " " + r.Item3);
-                Assert.Equal(1, hitsByUrl["/nuget"]);
+                AssertUrlHitCountError("/nuget", 1, hitsByUrl);
 
                 foreach (var url in hitsByUrl.Keys)
                 {
-                    Assert.True(1 == hitsByUrl[url], url);
+                    AssertUrlHitCountError(url, 1, hitsByUrl);
                 }
             }
         }
@@ -1545,7 +1550,7 @@ namespace NuGet.CommandLine.Test
         {
             return ServerHandler(request,
                 hitsByUrl,
-                server, 
+                server,
                 indexJson,
                 localRepo,
                 new ManualResetEventSlim(true),
@@ -1742,9 +1747,9 @@ namespace NuGet.CommandLine.Test
                     });
                 }
 
-                throw new Exception("This test needs to be updated to support: " + path);
+                throw new InvalidOperationException("This test needs to be updated to support: " + path);
             }
-            catch (Exception)
+            catch
             {
                 // Debug here
                 throw;
@@ -1781,6 +1786,23 @@ namespace NuGet.CommandLine.Test
         /// Store all directories used by the unit tests and clean them up at the end during Dispose()
         /// </summary>
         private ConcurrentDictionary<string, bool> _dirs = new ConcurrentDictionary<string, bool>();
+
+        private void AssertUrlHitCountError(string url, int expected, IDictionary<string,int> data)
+        {
+            if (!data.ContainsKey(url))
+            {
+                throw new InvalidOperationException($"Cannot find {url} in the calls made");
+            }
+
+            int actual = data[url];
+
+            if (expected != actual)
+            {
+                string message = $"Execpted {expected} calls to '{url}' but was actually called {actual} times.";
+
+                throw new InvalidOperationException(message);
+            }
+        }
 
         public void Dispose()
         {

@@ -35,6 +35,12 @@ namespace NuGet.CommandLine
         [Option(typeof(NuGetCommand), "CommandMSBuildVersion")]
         public string MSBuildVersion { get; set; }
 
+        [Option(typeof(NuGetCommand), "RestoreCommandUseExistingLockFile")]
+        public bool UseExistingLockFile { get; set; }
+
+        //[Option(typeof(NuGetCommand), "RestoreCommandLaunchDebugger")]
+        public bool LaunchDebugger { get; set; }
+
         [ImportingConstructor]
         public RestoreCommand()
             : base(MachineCache.Default)
@@ -44,8 +50,13 @@ namespace NuGet.CommandLine
         // The directory that contains msbuild
         private string _msbuildDirectory;
 
+        private const int ConcurrentRestores = 16;
+
         public override async Task ExecuteCommandAsync()
         {
+            if (LaunchDebugger)
+                Debugger.Launch();
+
             var success = true;
 
             _msbuildDirectory = MsBuildUtility.GetMsbuildDirectory(MSBuildVersion, Console);
@@ -61,6 +72,7 @@ namespace NuGet.CommandLine
             }
 
             var restoreInputs = DetermineRestoreInputs();
+
             if (restoreInputs.PackageReferenceFiles.Count > 0)
             {
                 var v2RestoreResult = await PerformNuGetV2RestoreAsync(restoreInputs);
@@ -80,38 +92,43 @@ namespace NuGet.CommandLine
                                     restoreInputs,
                                     globalPackagesFolder);
 
+                var contexts = new TransitiveRestoreSolutionContext(packagesDir,
+                    restoreInputs.V3RestoreFiles,
+                    GetProjectReferences,
+                    UseExistingLockFile);
 
                 if (DisableParallelProcessing)
                 {
-                    foreach (var file in restoreInputs.V3RestoreFiles)
+                    foreach (var context in contexts.ProjectContexts)
                     {
-                        var v3RestoreResult = await PerformNuGetV3RestoreAsync(packagesDir, file);
+                        var v3RestoreResult = await PerformNuGetV3RestoreAsync(context);
                         success &= v3RestoreResult;
                     }
                 }
                 else
                 {
-                    // Throttle the tasks so no more than 16 run at a time, so memory doesn't accumulate.
+                    // Throttle the tasks so no more than ConcurrentRestores run at a time, so memory doesn't accumulate.
                     // This should make large project (over 100 project.json files) allocate reasonable
                     // amounts of memory.
 
                     var tasks = new List<Task<bool>>();
-                    int restoreCount = restoreInputs.V3RestoreFiles.Count;
+                    int restoreCount = contexts.ProjectContexts.Count;
 
-                    int currentFileIndex = 0;
+                    int contextIndex = 0;
 
                     do
                     {
-                        Debug.Assert(tasks.Count < 16);
+                        Debug.Assert(tasks.Count < ConcurrentRestores);
 
-                        // Fill with 16 tasks upfront, then add one by one as they get completed.
-                        int newTasks = 16 - tasks.Count;
+                        // Fill with ConcurrentRestores tasks upfront, then add one by one as they get completed.
+                        int newTasks = ConcurrentRestores - tasks.Count;
 
-                        for (int i = 0; currentFileIndex < restoreCount && i < newTasks; i++, currentFileIndex++)
+                        for (int i = 0; contextIndex < restoreCount && i < newTasks; i++, contextIndex++)
                         {
-                            var file = restoreInputs.V3RestoreFiles[currentFileIndex];
-                            var newTask = PerformNuGetV3RestoreAsync(packagesDir, file);
+                            var context = contexts.ProjectContexts[i];
+                            context.Lock = UseExistingLockFile;
 
+                            var newTask = PerformNuGetV3RestoreAsync(context);
                             tasks.Add(newTask);
                         }
 
@@ -121,6 +138,8 @@ namespace NuGet.CommandLine
                         tasks.Remove(task);
                     }
                     while (tasks.Count > 0);
+
+                    Debug.Assert(contextIndex == restoreCount);
                 }
             }
 
@@ -168,64 +187,44 @@ namespace NuGet.CommandLine
             throw new CommandLineException(message);
         }
 
-        private async Task<bool> PerformNuGetV3RestoreAsync(string packagesDir, string inputPath)
+        private IEnumerable<string> GetProjectReferences(string inputFile)
         {
-            var inputFileName = Path.GetFileName(inputPath);
-            var projectDirectory = Path.GetDirectoryName(Path.GetFullPath(inputPath));
-            PackageSpec packageSpec = null;
-            string projectJsonPath = null;
-            string projectName = null;
+            return MsBuildUtility.GetProjectReferences(_msbuildDirectory, inputFile);
+        }
 
-            // Determine the type of the input and restore it appropriately
-            // Inputs can be: project.json files or msbuild project files
+        private async Task<bool> PerformNuGetV3RestoreAsync(TransitiveRestoreProjectContext context)
+        {
+            bool success = false;
 
-            IEnumerable<string> externalProjects = null;
-            if (BuildIntegratedProjectUtility.IsProjectConfig(inputPath))
+            if (context == null)
             {
-                // Restore a project.json file using the directory as the Id
-                Console.LogVerbose($"Reading project file {Arguments[0]}");
-
-                projectJsonPath = inputPath;
-                projectName = Path.GetFileName(projectDirectory);
-            }
-            else if (ProjectHelper.UnsupportedProjectExtensions.Contains(Path.GetExtension(inputPath)))
-            {
-                // Unsupported projects such as DNX's .xproj are a noop and should
-                // be treated as a success.
+                // Skipping DNX projects for now
                 return true;
             }
-            else
-            {
-                projectName = Path.GetFileNameWithoutExtension(inputPath);
-                projectJsonPath = BuildIntegratedProjectUtility.GetProjectConfigPath(projectDirectory, projectName);
 
-                // For known project types that support the msbuild p2p reference task find all project references.
-                if (MsBuildUtility.IsMsBuildBasedProject(inputPath))
-                {
-                    // Restore a .csproj or other msbuild project file using the
-                    // file name without the extension as the Id
-                    externalProjects = MsBuildUtility.GetProjectReferences(_msbuildDirectory, inputPath);
-                }
+            if (!File.Exists(context.ProjectJsonPath))
+            {
+                Console.LogError($"Cannot find {context.ProjectJsonPath}");
+
+                return false;
             }
 
-            var success = false;
-
-            if (projectJsonPath != null && File.Exists(projectJsonPath))
+            if (File.Exists(context.ProjectJsonPath))
             {
-                Console.LogVerbose($"Reading project file {inputPath}");
+                Console.LogVerbose($"Reading project file {context.InputFileName}");
 
-                packageSpec = JsonPackageSpecReader.GetPackageSpec(
-                    File.ReadAllText(projectJsonPath),
-                    projectName,
-                    projectJsonPath);
+                var packageSpec = JsonPackageSpecReader.GetPackageSpec(
+                    File.ReadAllText(context.ProjectJsonPath),
+                    context.ProjectName,
+                    context.ProjectJsonPath);
 
                 Console.LogVerbose($"Loaded project {packageSpec.Name} from {packageSpec.FilePath}");
 
                 // Resolve the root directory
-                var rootDirectory = PackageSpecResolver.ResolveRootDirectory(inputPath);
+                var rootDirectory = context.RootDirectory;
                 Console.LogVerbose($"Found project root directory: {rootDirectory}");
 
-                Console.LogVerbose($"Using packages directory: {packagesDir}");
+                Console.LogVerbose($"Using packages directory: {context.PackagesDirectory}");
 
                 // Convert package sources to repositories
                 var sourceProvider = GetSourceRepositoryProvider();
@@ -234,10 +233,10 @@ namespace NuGet.CommandLine
                 // Create a restore request
                 var request = new RestoreRequest(
                     packageSpec,
-                   repositories,
+                    repositories,
                 packagesDirectory: null);
 
-                request.PackagesDirectory = packagesDir;
+                request.PackagesDirectory = context.PackagesDirectory;
 
                 if (DisableParallelProcessing)
                 {
@@ -251,30 +250,28 @@ namespace NuGet.CommandLine
                 request.CacheContext.NoCache = NoCache;
 
                 // Read the existing lock file, this is needed to support IsLocked=true
-                var lockFilePath = BuildIntegratedProjectUtility.GetLockFilePath(projectJsonPath);
+                var lockFilePath = context.LockFilePath;
+
                 request.LockFilePath = lockFilePath;
-                request.ExistingLockFile = BuildIntegratedRestoreUtility.GetLockFile(lockFilePath, Console);
+                request.ExistingLockFile = context.GetLockFile(Console);
 
                 // Resolve the packages directory
                 Console.LogVerbose($"Using packages directory: {request.PackagesDirectory}");
 
-                if (externalProjects != null)
+                foreach (var externalReference in context.ProjectReferences)
                 {
-                    foreach (var externalReference in externalProjects)
-                    {
-                        var projectDir = Path.GetDirectoryName(externalReference);
-                        var childProjectName = Path.GetFileNameWithoutExtension(externalReference);
-                        var childProjectJson =
-                            BuildIntegratedProjectUtility.GetProjectConfigPath(projectDir, childProjectName);
+                    var projectDir = Path.GetDirectoryName(externalReference);
+                    var childProjectName = Path.GetFileNameWithoutExtension(externalReference);
+                    var childProjectJson =
+                        BuildIntegratedProjectUtility.GetProjectConfigPath(projectDir, childProjectName);
 
-                        Debug.Assert(childProjectJson != null && File.Exists(childProjectJson), childProjectJson);
+                    Debug.Assert(childProjectJson != null && File.Exists(childProjectJson), childProjectJson);
 
-                        request.ExternalProjects.Add(
-                            new ExternalProjectReference(
-                                externalReference,
-                                childProjectJson,
-                                projectReferences: Enumerable.Empty<string>()));
-                    }
+                    request.ExternalProjects.Add(
+                        new ExternalProjectReference(
+                            externalReference,
+                            childProjectJson,
+                            projectReferences: Enumerable.Empty<string>()));
                 }
 
                 CheckRequireConsent();

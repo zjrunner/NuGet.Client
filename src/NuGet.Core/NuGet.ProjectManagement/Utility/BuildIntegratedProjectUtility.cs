@@ -73,11 +73,16 @@ namespace NuGet.ProjectManagement
 
         /// <summary>
         /// Create the lock file path from the config file path.
-        /// If the config file includes a project name the 
+        /// If the config file includes a project name the
         /// lock file will include the name also.
         /// </summary>
         public static string GetLockFilePath(string configFilePath)
         {
+            if (configFilePath == null)
+            {
+                throw new ArgumentNullException(nameof(configFilePath));
+            }
+
             string lockFilePath = null;
 
             var dir = Path.GetDirectoryName(configFilePath);

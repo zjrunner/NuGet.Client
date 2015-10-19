@@ -54,12 +54,14 @@ namespace NuGet.Commands
                 _request.LockFilePath;
 
             bool relockFile = false;
+
             if (_request.ExistingLockFile != null
                 && _request.ExistingLockFile.IsLocked
                 && !_request.ExistingLockFile.IsValidForPackageSpec(_request.Project))
             {
                 // The lock file was locked, but the project.json is out of date
                 relockFile = true;
+
                 _request.ExistingLockFile.IsLocked = false;
                 _log.LogInformation(Strings.Log_LockFileOutOfDate);
             }

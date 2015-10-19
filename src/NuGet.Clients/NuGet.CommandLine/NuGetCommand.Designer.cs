@@ -10660,6 +10660,15 @@ namespace NuGet.CommandLine {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Skips resolving dependencies, and just downloads the packages written in the lock file.
+        /// </summary>
+        internal static string RestoreCommandUseExistingLockFile {
+            get {
+                return ResourceManager.GetString("RestoreCommandUseExistingLockFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Saves an API key for a given server URL. When no URL is provided API key is saved for the NuGet gallery..
         /// </summary>
         internal static string SetApiKeyCommandDescription {
