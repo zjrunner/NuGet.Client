@@ -205,11 +205,8 @@ namespace NuGet.CommandLine
             if (!File.Exists(context.ProjectJsonPath))
             {
                 Console.LogError($"Cannot find {context.ProjectJsonPath}");
-
-                return false;
             }
-
-            if (File.Exists(context.ProjectJsonPath))
+            else
             {
                 Console.LogVerbose($"Reading project file {context.InputFileName}");
 
@@ -258,21 +255,33 @@ namespace NuGet.CommandLine
                 // Resolve the packages directory
                 Console.LogVerbose($"Using packages directory: {request.PackagesDirectory}");
 
-                foreach (var externalReference in context.ProjectReferences)
-                {
-                    var projectDir = Path.GetDirectoryName(externalReference);
-                    var childProjectName = Path.GetFileNameWithoutExtension(externalReference);
-                    var childProjectJson =
-                        BuildIntegratedProjectUtility.GetProjectConfigPath(projectDir, childProjectName);
+                Func<IEnumerable<ExternalProjectReference>> factory =
+                    () =>
+                    {
+                        var references = context.ProjectReferencesFactory();
 
-                    Debug.Assert(childProjectJson != null && File.Exists(childProjectJson), childProjectJson);
+                        var list = new List<ExternalProjectReference>();
 
-                    request.ExternalProjects.Add(
-                        new ExternalProjectReference(
-                            externalReference,
-                            childProjectJson,
-                            projectReferences: Enumerable.Empty<string>()));
-                }
+                        foreach (string reference in references)
+                        {
+                            var projectDir = Path.GetDirectoryName(reference);
+                            var childProjectName = Path.GetFileNameWithoutExtension(reference);
+                            var childProjectJson =
+                                BuildIntegratedProjectUtility.GetProjectConfigPath(projectDir, childProjectName);
+
+                            Debug.Assert(childProjectJson != null &&
+                                         File.Exists(childProjectJson), childProjectJson);
+
+                            list.Add(new ExternalProjectReference(
+                                            reference,
+                                            childProjectJson,
+                                            projectReferences: Enumerable.Empty<string>()));
+                        }
+
+                        return list;
+                    };
+
+                request.ExternalProjectsFactory = factory;
 
                 CheckRequireConsent();
 

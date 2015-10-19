@@ -10660,7 +10660,7 @@ namespace NuGet.CommandLine {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Skips resolving dependencies, and just downloads the packages written in the lock file.
+        ///   Looks up a localized string similar to Skips resolving dependencies, and just downloads the packages defined in the lock file..
         /// </summary>
         internal static string RestoreCommandUseExistingLockFile {
             get {

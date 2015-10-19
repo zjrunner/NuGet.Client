@@ -136,14 +136,21 @@ namespace NuGet.CommandLine.XPlat
 
                             if (externalProjects != null)
                             {
-                                foreach (var externalReference in externalProjects)
+                                request.ExternalProjectsFactory = () =>
                                 {
-                                    request.ExternalProjects.Add(
-                                        new ExternalProjectReference(
-                                            externalReference,
-                                            Path.Combine(Path.GetDirectoryName(externalReference), PackageSpec.PackageSpecFileName),
-                                            projectReferences: Enumerable.Empty<string>()));
-                                }
+                                    var list = new List<ExternalProjectReference>();
+
+                                    foreach (var externalReference in externalProjects)
+                                    {
+                                        list.Add(
+                                            new ExternalProjectReference(
+                                                externalReference,
+                                                Path.Combine(Path.GetDirectoryName(externalReference), PackageSpec.PackageSpecFileName),
+                                                projectReferences: Enumerable.Empty<string>()));
+                                    }
+
+                                    return list;
+                                };
                             }
 
                             // Run the restore

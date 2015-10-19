@@ -38,7 +38,7 @@ namespace NuGet.Commands
 
             Project = project;
 
-            ExternalProjects = new List<ExternalProjectReference>();
+            ExternalProjectsFactory = () => new List<ExternalProjectReference>();
             CompatibilityProfiles = new HashSet<FrameworkRuntimePair>();
 
             PackagesDirectory = packagesDirectory;
@@ -66,7 +66,7 @@ namespace NuGet.Commands
         /// <summary>
         /// A list of projects provided by external build systems (i.e. MSBuild)
         /// </summary>
-        public IList<ExternalProjectReference> ExternalProjects { get; set; }
+        public Func<IEnumerable<ExternalProjectReference>> ExternalProjectsFactory { get; set; }
 
         /// <summary>
         /// The path to the lock file to read/write. If not specified, uses the file 'project.lock.json' in the same

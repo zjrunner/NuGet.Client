@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using NuGet.Common;
 using NuGet.PackageManagement;
@@ -11,12 +12,16 @@ namespace NuGet.CommandLine
     {
         public string InputFileName { get; set; }
         public string ProjectDirectory { get; set; }
-
         public bool IsStandaloneProjectJson { get; set; }
-
         public string ProjectJsonPath { get; set; }
-
         public string ProjectName { get; set; }
+        public Func<IEnumerable<string>> ProjectReferencesFactory = () => Enumerable.Empty<string>();
+        public string PackagesDirectory { get; set; }
+
+        /// <summary>
+        /// Indicates that the user wants to treat the lock file as locked regadless of the file content
+        /// </summary>
+        public bool Lock { get; set; }
 
         public string RootDirectory
         {
@@ -49,14 +54,5 @@ namespace NuGet.CommandLine
 
             return lockFile;
         }
-
-        /// <summary>
-        /// Indicates that the user wants to treat the lock file as locked regadless of the file content
-        /// </summary>
-        public bool Lock { get; set; }
-
-        public string PackagesDirectory { get; set; }
-
-        public IEnumerable<string> ProjectReferences = Enumerable.Empty<string>();
     }
 }
