@@ -68,6 +68,21 @@ namespace NuGet.Commands
         /// </summary>
         public Func<IEnumerable<ExternalProjectReference>> ExternalProjectsFactory { get; set; }
 
+        private IReadOnlyList<ExternalProjectReference> _externalProjects;
+
+        public IReadOnlyList<ExternalProjectReference> ExternalProjects
+        {
+            get
+            {
+                if (_externalProjects == null)
+                {
+                    _externalProjects = ExternalProjectsFactory().ToList();
+                }
+
+                return _externalProjects;
+            }
+        }
+
         /// <summary>
         /// The path to the lock file to read/write. If not specified, uses the file 'project.lock.json' in the same
         /// directory as the provided PackageSpec.
