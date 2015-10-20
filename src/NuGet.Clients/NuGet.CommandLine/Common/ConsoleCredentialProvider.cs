@@ -17,7 +17,8 @@ namespace NuGet
 
         private IConsole Console { get; set; }
 
-        public Task<ICredentials> Get(Uri uri, IWebProxy proxy, bool isProxy, bool isRetry, bool nonInteractive, CancellationToken cancellationToken)
+        public Task<ICredentials> Get(Uri uri, IWebProxy proxy, bool isProxy, bool isRetry,
+            bool nonInteractive, CancellationToken cancellationToken)
         {
             if (uri == null)
             {

@@ -25,7 +25,8 @@ namespace NuGet.Credentials
             _provider = provider;
         }
 
-        public Task<ICredentials> Get(Uri uri, IWebProxy proxy, bool isProxyRequest, bool isRetry, bool nonInteractive, CancellationToken cancellationToken)
+        public Task<ICredentials> Get(Uri uri, IWebProxy proxy, bool isProxyRequest, bool isRetry,
+            bool nonInteractive, CancellationToken cancellationToken)
         {
             if (uri == null)
             {
@@ -34,7 +35,11 @@ namespace NuGet.Credentials
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            var task = Task.FromResult(_provider.GetCredentials(uri, proxy, isProxyRequest ? CredentialType.ProxyCredentials : CredentialType.RequestCredentials, isRetry));
+            var task = Task.FromResult(_provider.GetCredentials(
+                uri,
+                proxy,
+                isProxyRequest ? CredentialType.ProxyCredentials : CredentialType.RequestCredentials,
+                isRetry));
 
             return task;
         }

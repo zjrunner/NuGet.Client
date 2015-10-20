@@ -20,7 +20,11 @@ using System.Threading;
 
 namespace NuGetVSExtension
 {
-    class VisualStudioAccountProvider: NuGet.Credentials.ICredentialProvider
+    /// <summary>
+    /// This provider connects to Visual Studio Online endpoints by pulling the token
+    /// from the VS keychain.
+    /// </summary>
+    public class VisualStudioAccountProvider: NuGet.Credentials.ICredentialProvider
     {
         private const string VsoEndpointResource = "499b84ac-1321-427f-aa17-267ca6975798";
         private const string VssResourceTenant = "X-VSS-ResourceTenant";
@@ -36,6 +40,12 @@ namespace NuGetVSExtension
             var serviceProvider = ServiceProvider.GlobalProvider;
             _accountManager = serviceProvider.GetService(typeof(SVsAccountManager)) as IAccountManager;
             _dte = ServiceLocator.GetInstance<DTE>();
+        }
+
+        internal VisualStudioAccountProvider(IAccountManager accountManager, DTE dte)
+        {
+            _accountManager = accountManager;
+            _dte = dte;
         }
 
         /// <summary>
@@ -161,8 +171,9 @@ namespace NuGetVSExtension
             return ret;
         }
 
-        private async Task<ICredentials> PromptUserForAccount(string tenentId, VSAccountProvider provider,
-            bool nonInteractive, CancellationToken cancellationToken)
+        // Logic shows UI and interacts with all mocked methods.  Mocking this as well.
+        internal virtual async Task<ICredentials> PromptUserForAccount(
+        	string tenentId, VSAccountProvider provider, bool nonInteractive, CancellationToken cancellationToken)
         {
             ICredentials ret = null;
             if (nonInteractive)
@@ -171,6 +182,7 @@ namespace NuGetVSExtension
                 return null;
             }
             Account account = null;
+
             ThreadHelper.JoinableTaskFactory.Run(async () =>
             {
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
@@ -193,7 +205,8 @@ namespace NuGetVSExtension
             return ret;
         }
 
-        private async Task<ICredentials> GetTokenFromAccount(AccountAndTenant account, VSAccountProvider provider,
+        // Logic goes between UI and web.  made internal to be mocked for unit tests
+        internal virtual async Task<ICredentials> GetTokenFromAccount(AccountAndTenant account, VSAccountProvider provider,
             bool nonInteractive, CancellationToken cancellationToken)
         {
             // get the ADAL creds for the user account
@@ -226,7 +239,6 @@ namespace NuGetVSExtension
 
             var aadcred = new VssAadCredential(new VssAadToken(result));
 
-
             // create the session token
             var connection = new VssConnection(AccountManager.VsoEndpoint, aadcred);
             var delegatedClient = connection.GetClient<DelegatedAuthorizationHttpClient>();
@@ -245,13 +257,15 @@ namespace NuGetVSExtension
             return cred;
         }
 
-        private TenantInformation FindTenantInAccount(VsUserAccount account, string tenantId, VSAccountProvider provider)
+        // Internal so we can mock.  Need to call this a lot and 
+        internal virtual TenantInformation FindTenantInAccount(VsUserAccount account, string tenantId, VSAccountProvider provider)
         {
             var tenantsInScope = provider.GetTenantsInScope(account);
             return tenantsInScope.FirstOrDefault(tenant => tenant.TenantId == tenantId);
         }
 
-        private async Task<string> LookupTenant(Uri uri, IWebProxy proxy, CancellationToken cancellationToken)
+        // Logic to query web.  This will be mocked out in unit tests
+        internal virtual async Task<string> LookupTenant(Uri uri, IWebProxy proxy, CancellationToken cancellationToken)
         {
             string tenantId;
             //  we assume the call will be access denied (or the provider shouldn't have been called)
@@ -290,7 +304,8 @@ namespace NuGetVSExtension
             return tenantId;
         }
 
-        private async Task<bool> AccountHasAccess(Uri uri, IWebProxy proxy, ICredentials credentials, CancellationToken cancellationToken)
+        // Logic to query web.  This will be mocked out in unit test
+        internal virtual async Task<bool> AccountHasAccess(Uri uri, IWebProxy proxy, ICredentials credentials, CancellationToken cancellationToken)
         {
             var ret = false;
             var req = WebRequest.Create(uri);

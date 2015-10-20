@@ -73,8 +73,10 @@ namespace NuGet.Credentials
         /// to use this proxy in order to acquire credentials from their authentication source.</param>
         /// <param name="isProxy">If true, get credentials to authenticate for the requested proxy.
         /// If false, the credentials are intended for a remote service.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
         /// <returns>A credential object, or null if no credentials could be acquired.</returns>
-        public async Task<ICredentials> GetCredentials(Uri uri, IWebProxy proxy, bool isProxy, CancellationToken cancellationToken)
+        public async Task<ICredentials> GetCredentials(Uri uri, IWebProxy proxy, bool isProxy,
+            CancellationToken cancellationToken)
         {
             if (uri == null)
             {
@@ -93,14 +95,15 @@ namespace NuGet.Credentials
 
                 try
                 {
-                    // There is a potential optimization here were we take a semaphore per provider instead of one
-                    // that blocks all providers.  We had some conserns about doing this.  If multiple providers
-                    // are called at the same time it becomes much more complex for them to handle access to shared
-                    // resources.  The primary consern is UI (e.g. two providers showing modal dialogs at the same
-                    // time) however there is also the potential that providers would share reading/writing a config
-                    // file or other system resource.  Additionally providers are only consulted if the credential cache
-                    // failes so after initial calls this should not be common.  Optimizing here could make provider
-                    // authoring more complex so unles we determin there is a necessary performance improvemnt that can
+                    // There is a potential optimization here were we take a semaphore per provider instead of
+                    // one that blocks all providers.  We had some conserns about doing this.  If multiple
+                    // providers are called at the same time it becomes much more complex for them to handle
+                    // access to shared resources.  The primary consern is UI (e.g. two providers showing
+                    // modal dialogs at the same time) however there is also the potential that providers
+                    // would share reading/writing a config file or other system resource.  Additionally
+                    // providers are only consulted if the credential cache fails so after initial calls
+                    // this should not be common.  Optimizing here could make provider authoring more complex
+                    // so unles we determin there is a necessary performance improvemnt that can
                     // be gained with this optimization we have opted to take a larger lock.
                     _providerSemaphore.WaitOne();
                     // expire the cache on retries

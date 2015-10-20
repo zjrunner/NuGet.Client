@@ -147,7 +147,8 @@ namespace NuGet.CommandLine
             // We need to sync the v2 proxy cache and v3 proxy cache so that the user will not
             // get prompted twice for the same authenticated proxy.
             var v2ProxyCache = NuGet.ProxyCache.Instance as IProxyCache;
-            NuGet.Protocol.Core.v3.HttpHandlerResourceV3.PromptForProxyCredentials = async (uri, proxy, cancellationToken) =>
+            NuGet.Protocol.Core.v3.HttpHandlerResourceV3.PromptForProxyCredentials =
+                async (uri, proxy, cancellationToken) =>
             {
                 var v2Credentials = v2ProxyCache?.GetProxy(uri)?.Credentials;
                 if (v2Credentials != null && proxy.Credentials != v2Credentials)
@@ -156,7 +157,8 @@ namespace NuGet.CommandLine
                     return v2Credentials;
                 }
 
-                return await credentialService.GetCredentials(uri, proxy, isProxy: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+                return await credentialService.GetCredentials(
+                    uri, proxy, isProxy: true, cancellationToken: cancellationToken).ConfigureAwait(false);
             };
 
             NuGet.Protocol.Core.v3.HttpHandlerResourceV3.ProxyPassed = proxy =>
@@ -165,10 +167,9 @@ namespace NuGet.CommandLine
                 v2ProxyCache?.Add(proxy);
             };
             
-            NuGet.Protocol.Core.v3.HttpHandlerResourceV3.PromptForCredentials = async (uri, cancellationToken) =>
-            {
-                return await credentialService.GetCredentials(uri, proxy: null, isProxy: false, cancellationToken: cancellationToken).ConfigureAwait(false);
-            };
+            NuGet.Protocol.Core.v3.HttpHandlerResourceV3.PromptForCredentials =
+                async (uri, cancellationToken) => await credentialService.GetCredentials(
+                    uri, proxy: null, isProxy: false, cancellationToken: cancellationToken).ConfigureAwait(false);
 
             NuGet.Protocol.Core.v3.HttpHandlerResourceV3.CredentialsSuccessfullyUsed = (uri, credentials) =>
             {
