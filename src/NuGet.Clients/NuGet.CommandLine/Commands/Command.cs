@@ -139,7 +139,7 @@ namespace NuGet.CommandLine
             providers.Add(new ConsoleCredentialProvider(Console));
 
             CredentialService.DefaultProviders = providers;
-            var credentialService = new CredentialService(Console.WriteError, NonInteractive);
+            var credentialService = new CredentialService(Console.WriteError, NonInteractive, useCache: false);
 
             HttpClient.DefaultCredentialProvider = new CredentialServiceAdapter(credentialService);
 

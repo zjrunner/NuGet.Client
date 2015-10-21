@@ -87,7 +87,8 @@ namespace NuGet.Credentials
                     path);
             }
 
-            var extensionsPathEnvar = Environment.GetEnvironmentVariable(CredentialsConstants.ExtensionsPathEnvar);
+            var extensionsPathEnvar = Environment.GetEnvironmentVariable(
+                CredentialsConstants.ExtensionsPathEnvar);
             if (extensionsPathEnvar != null)
             {
                 yield return Path.Combine(extensionsPathEnvar,path);
@@ -102,7 +103,8 @@ namespace NuGet.Credentials
                 var timeoutSetting = _settings.GetValue(
                     CredentialsConstants.SettingsConfigSection,
                     CredentialsConstants.ProviderTimeoutSecondsSetting);
-                var timeoutEnvar = Environment.GetEnvironmentVariable(CredentialsConstants.ProviderTimeoutSecondsEnvar);
+                var timeoutEnvar = Environment.GetEnvironmentVariable(
+                    CredentialsConstants.ProviderTimeoutSecondsEnvar);
 
                 if (int.TryParse(timeoutSetting, out value)
                     || int.TryParse( timeoutEnvar, out value))

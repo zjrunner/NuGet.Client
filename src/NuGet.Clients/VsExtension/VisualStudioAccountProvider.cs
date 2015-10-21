@@ -49,16 +49,21 @@ namespace NuGetVSExtension
         }
 
         /// <summary>
-        /// Determins if the endpoint is a Visual Studio Online endpoint.  If so, uses the keychain to get a session
-        /// token for the endpoint and returns that as a ICredentials object
+        /// Determins if the endpoint is a Visual Studio Online endpoint.  If so, uses the keychain to get a
+        /// session token for the endpoint and returns that as a ICredentials object
         /// </summary>
         /// <param name="uri">URI for the feed endponint to use</param>
-        /// <param name="proxy">Web proxy to use when comunicating on the network.  Null if there is no proxy authentication configured</param>
-        /// <param name="isProxyRequest">Flag to indicate that this request is to get proxy authentication credetials.  Note, if this is set to true method will return null</param>
-        /// <param name="isRetry">Flag to indicate if this is the first time the URI has been looked up.  If this is true we check to see if the account has access to the feed.  
-        ///                       First time we assume that is true to minimize network trafic.</param>
-        /// <param name="nonInteractive">Flag to indicate if UI can be shown.  If true, we will fail in cases where we need to show UI instead of prompting</param>
-        /// <returns>If a credentials can be obtained a credentails object with a session token for the URI, if not NULL</returns>
+        /// <param name="proxy">Web proxy to use when comunicating on the network.  Null if there is no proxy
+        /// authentication configured</param>
+        /// <param name="isProxyRequest">Flag to indicate that this request is to get proxy authentication
+        /// credetials.  Note, if this is set to true method will return null</param>
+        /// <param name="isRetry">Flag to indicate if this is the first time the URI has been looked up.
+        /// If this is true we check to see if the account has access to the feed.
+        /// First time we assume that is true to minimize network trafic.</param>
+        /// <param name="nonInteractive">Flag to indicate if UI can be shown.  If true, we will fail in cases
+        /// where we need to show UI instead of prompting</param>
+        /// <returns>If a credentials can be obtained a credentails object with a session token for the URI,
+        /// if not NULL</returns>
         public async Task<ICredentials> Get(Uri uri, IWebProxy proxy, bool isProxyRequest, bool isRetry,
             bool nonInteractive, CancellationToken cancellationToken)
         {
@@ -119,15 +124,18 @@ namespace NuGetVSExtension
             if (posibleAccounts.Count == 1)
             {
                 //  If we only have one posible account use it
-                ret = await GetTokenFromAccount(posibleAccounts[0], provider, nonInteractive, cancellationToken).ConfigureAwait(false);
+                ret = await GetTokenFromAccount(posibleAccounts[0], provider, nonInteractive, cancellationToken)
+                    .ConfigureAwait(false);
                 if (isRetry)
                 {
-                    var hasAccess = await AccountHasAccess(uri, proxy, ret, cancellationToken).ConfigureAwait(false);
+                    var hasAccess = await AccountHasAccess(uri, proxy, ret, cancellationToken)
+                        .ConfigureAwait(false);
                     if (!hasAccess)
                     {
-                        //  The account didn't have access and we are on a retry so the token didn't expire.  we either need
-                        //  to prompt the user for different creds or fail in this case
-                        ret = await PromptUserForAccount(uriTenantId, provider, nonInteractive, cancellationToken).ConfigureAwait(false);
+                        // The account didn't have access and we are on a retry so the token didn't expire.
+                        // we either need to prompt the user for different creds or fail in this case
+                        ret = await PromptUserForAccount(uriTenantId, provider, nonInteractive, cancellationToken)
+                            .ConfigureAwait(false);
                     }
                 }
             }
@@ -136,9 +144,15 @@ namespace NuGetVSExtension
                 var accountsWithAccess = new List<AccountWithCreds>();
                 foreach (var account in posibleAccounts)
                 {
-                    var cred = await GetTokenFromAccount(account, provider, nonInteractive: true, cancellationToken:cancellationToken)
+                    var cred = await GetTokenFromAccount(
+                        account,
+                        provider,
+                        nonInteractive: true,
+                        cancellationToken:cancellationToken)
                         .ConfigureAwait(false);
-                    var hasAccess = await AccountHasAccess(uri, proxy, cred, cancellationToken).ConfigureAwait(false);
+
+                    var hasAccess = await AccountHasAccess(uri, proxy, cred, cancellationToken)
+                        .ConfigureAwait(false);
                     if (hasAccess)
                     {
                         accountsWithAccess.Add(new AccountWithCreds(account, cred));
@@ -151,20 +165,23 @@ namespace NuGetVSExtension
                 }
                 else
                 {
-                    // we couldn't finde a unique account with access to the endpoint so we are going to have to ask the user...
-                    ret = await PromptUserForAccount(uriTenantId, provider, nonInteractive, cancellationToken).ConfigureAwait(false);
+                    // we couldn't finde a unique account with access to the endpoint so we are going to have
+                    // to ask the user...
+                    ret = await PromptUserForAccount(uriTenantId, provider, nonInteractive, cancellationToken)
+                        .ConfigureAwait(false);
                 }
 
             }
             else // count == 0 so we should prompt the user
             {
-                ret = await PromptUserForAccount(uriTenantId, provider, nonInteractive, cancellationToken).ConfigureAwait(false);
+                ret = await PromptUserForAccount(uriTenantId, provider, nonInteractive, cancellationToken)
+                    .ConfigureAwait(false);
             }
 
             if (ret == null)
             {
-                //  No credentials found but we know that this is a VSO endpoint so we want to throw an exception
-                //  to prevent the other providers from being called
+                // No credentials found but we know that this is a VSO endpoint so we want to throw an
+                // exception to prevent the other providers from being called
                 throw new Exception("No valid credentials found for VSO account");
             }
 
@@ -178,7 +195,8 @@ namespace NuGetVSExtension
             ICredentials ret = null;
             if (nonInteractive)
             {
-                //  If we are not supposed to interact with the user then we can't prompt for account so we need to fial.
+                //  If we are not supposed to interact with the user then we can't prompt for account so we
+                // need to fail.
                 return null;
             }
             Account account = null;
@@ -192,29 +210,33 @@ namespace NuGetVSExtension
                     parent = new IntPtr(_dte.MainWindow.HWnd);
                 }
 
-                account = await provider.CreateAccountWithUIAsync(parent, cancellationToken).ConfigureAwait(false);
+                account = await provider.CreateAccountWithUIAsync(parent, cancellationToken)
+                    .ConfigureAwait(false);
             });
 
             var tenant = FindTenantInAccount(account, tenentId, provider);
             if (tenant != null)
             {
-                ret = await GetTokenFromAccount(new AccountAndTenant(account, tenant), provider, false, cancellationToken)
-                    .ConfigureAwait(false);
+                ret = await GetTokenFromAccount(
+                    new AccountAndTenant(account, tenant),
+                    provider,
+                    false,
+                    cancellationToken).ConfigureAwait(false);
             }
 
             return ret;
         }
 
         // Logic goes between UI and web.  made internal to be mocked for unit tests
-        internal virtual async Task<ICredentials> GetTokenFromAccount(AccountAndTenant account, VSAccountProvider provider,
-            bool nonInteractive, CancellationToken cancellationToken)
+        internal virtual async Task<ICredentials> GetTokenFromAccount(AccountAndTenant account,
+            VSAccountProvider provider, bool nonInteractive, CancellationToken cancellationToken)
         {
             // get the ADAL creds for the user account
             var uniqueId = account.TenantToUse.UniqueIds.First();
             var tenantId = account.TenantToUse.TenantId;
 
-            //  we are passed the flag as non-interactive.  we realy want to know if we should prompt so need to reverse
-            //  the flag
+            // we are passed the flag as non-interactive.  we realy want to know if we should prompt so
+            // need to reverse the flag
             var shouldPrompt = !nonInteractive;
             AuthenticationResult result = null;
             ThreadHelper.JoinableTaskFactory.Run(async () =>
@@ -246,7 +268,8 @@ namespace NuGetVSExtension
             SessionToken sessionToken = null;
             // N.B. uncomment scope once task #418464 is done
             // [Expose packaging token scopes in the UI (also add PUT to vso.packaging_write)]
-            sessionToken = await delegatedClient.CreateSessionToken( /*scope: "vso.packaging_write"*/).ConfigureAwait(false);
+            sessionToken = await delegatedClient.CreateSessionToken( /*scope: "vso.packaging_write"*/)
+                .ConfigureAwait(false);
 
             var cred = new NetworkCredential
             {
@@ -258,14 +281,16 @@ namespace NuGetVSExtension
         }
 
         // Internal so we can mock.  Need to call this a lot and 
-        internal virtual TenantInformation FindTenantInAccount(VsUserAccount account, string tenantId, VSAccountProvider provider)
+        internal virtual TenantInformation FindTenantInAccount(VsUserAccount account, string tenantId,
+            VSAccountProvider provider)
         {
             var tenantsInScope = provider.GetTenantsInScope(account);
             return tenantsInScope.FirstOrDefault(tenant => tenant.TenantId == tenantId);
         }
 
         // Logic to query web.  This will be mocked out in unit tests
-        internal virtual async Task<string> LookupTenant(Uri uri, IWebProxy proxy, CancellationToken cancellationToken)
+        internal virtual async Task<string> LookupTenant(Uri uri, IWebProxy proxy,
+            CancellationToken cancellationToken)
         {
             string tenantId;
             //  we assume the call will be access denied (or the provider shouldn't have been called)
@@ -305,7 +330,8 @@ namespace NuGetVSExtension
         }
 
         // Logic to query web.  This will be mocked out in unit test
-        internal virtual async Task<bool> AccountHasAccess(Uri uri, IWebProxy proxy, ICredentials credentials, CancellationToken cancellationToken)
+        internal virtual async Task<bool> AccountHasAccess(Uri uri, IWebProxy proxy, ICredentials credentials,
+            CancellationToken cancellationToken)
         {
             var ret = false;
             var req = WebRequest.Create(uri);

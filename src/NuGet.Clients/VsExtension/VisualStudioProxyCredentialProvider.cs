@@ -75,7 +75,8 @@ namespace NuGetVSExtension
             }
             finally
             {
-                // Reset the original WebRequest.DefaultWebProxy to what it was when we started credential discovery.
+                // Reset the original WebRequest.DefaultWebProxy to what it was when we started credential
+                // discovery.
                 WebRequest.DefaultWebProxy = originalProxy;
             }
         }

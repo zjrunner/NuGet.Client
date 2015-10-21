@@ -47,7 +47,8 @@ namespace NuGet.Protocol.Core.v3
         /// <summary>
         /// Function to be called to prompt user for proxy credentials.
         /// </summary> 
-        public static Func<Uri, IWebProxy, CancellationToken, Task<ICredentials>> PromptForProxyCredentials { get; set; }
+        public static Func<Uri, IWebProxy, CancellationToken, Task<ICredentials>> PromptForProxyCredentials
+            { get; set; }
 
         /// <summary>
         /// Action to be called when the proxy is successfully used to make a request.

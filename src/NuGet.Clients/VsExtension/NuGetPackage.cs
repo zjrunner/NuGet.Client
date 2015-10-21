@@ -345,7 +345,8 @@ namespace NuGetVSExtension
 
             var credentialService = new CredentialService(
                 (s) => this._outputConsoleLogger.OutputConsole.WriteLine(s),
-                nonInteractive: false);
+                nonInteractive: false,
+                useCache: true);
 
             HttpClient.DefaultCredentialProvider = new CredentialServiceAdapter(credentialService); ;
 
@@ -353,17 +354,20 @@ namespace NuGetVSExtension
             // We need to sync the v2 proxy cache and v3 proxy cache so that the user will not
             // get prompted twice for the same authenticated proxy.
             var v2ProxyCache = ProxyCache.Instance;
-            NuGet.Protocol.Core.v3.HttpHandlerResourceV3.PromptForProxyCredentials = async (uri, proxy, cancellationToken) =>
-            {
-                var v2Credentials = v2ProxyCache?.GetProxy(uri)?.Credentials;
-                if (v2Credentials != null && proxy.Credentials != v2Credentials)
+            NuGet.Protocol.Core.v3.HttpHandlerResourceV3.PromptForProxyCredentials =
+                async (uri, proxy, cancellationToken) =>
                 {
-                    // if cached v2 credentials have not been used, try using it first.
-                    return v2Credentials;
-                }
+                    var v2Credentials = v2ProxyCache?.GetProxy(uri)?.Credentials;
+                    if (v2Credentials != null && proxy.Credentials != v2Credentials)
+                    {
+                        // if cached v2 credentials have not been used, try using it first.
+                        return v2Credentials;
+                    }
 
-                return await credentialService.GetCredentials(uri, proxy, isProxy: true, cancellationToken: cancellationToken).ConfigureAwait(false);
-            };
+                    return await credentialService
+                        .GetCredentials(uri, proxy, isProxy: true, cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                };
 
             NuGet.Protocol.Core.v3.HttpHandlerResourceV3.ProxyPassed = proxy =>
             {
@@ -371,15 +375,18 @@ namespace NuGetVSExtension
                 v2ProxyCache?.Add(proxy);
             };
 
-            NuGet.Protocol.Core.v3.HttpHandlerResourceV3.PromptForCredentials = async (uri, cancellationToken) =>
-            {
-                // Get the proxy for this URI so we can pass it to the credentialService methods
-                // this lets them use the proxy if they have to hit the network.
-                var proxyCache = ProxyCache.Instance;
-                var proxy = proxyCache?.GetProxy(uri);
+            NuGet.Protocol.Core.v3.HttpHandlerResourceV3.PromptForCredentials =
+                async (uri, cancellationToken) =>
+                {
+                    // Get the proxy for this URI so we can pass it to the credentialService methods
+                    // this lets them use the proxy if they have to hit the network.
+                    var proxyCache = ProxyCache.Instance;
+                    var proxy = proxyCache?.GetProxy(uri);
 
-                return await credentialService.GetCredentials(uri, proxy: proxy, isProxy: false, cancellationToken: cancellationToken).ConfigureAwait(false);
-            };
+                    return await credentialService
+                        .GetCredentials(uri, proxy: proxy, isProxy: false, cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                };
 
             NuGet.Protocol.Core.v3.HttpHandlerResourceV3.CredentialsSuccessfullyUsed = (uri, credentials) =>
             {

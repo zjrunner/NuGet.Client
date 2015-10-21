@@ -53,7 +53,8 @@ namespace NuGet.Credentials
 
         public static PluginException CreatePathNotFoundMessage(string path, string attempted)
         {
-            return new PluginException(string.Format(Resources.PluginException_PathNotFound_Format, path, attempted));
+            return new PluginException(string.Format(Resources.PluginException_PathNotFound_Format, path,
+                attempted));
         }
 
         public static PluginException CreateAbortMessage(string path, string message)

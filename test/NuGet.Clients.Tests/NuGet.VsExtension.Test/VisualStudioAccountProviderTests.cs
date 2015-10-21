@@ -36,19 +36,22 @@ namespace NuGet.VsExtension.Test
                 .Returns(Task.FromResult<IAccountProvider>(_mockAccountProvider.Object));
             _mockAccountManager.Setup(x => x.Store.GetAllAccounts()).Returns(new List<Account>().AsReadOnly());
 
-            // We want to mock a few things here, the provider will hit the network and the UI thread.  Neither of these 
-            // Should be posible so we need to mock it out.
-            _mockExtensionProvider = new Mock<VisualStudioAccountProvider>(_mockAccountManager.Object, mockDte.Object);
+            // We want to mock a few things here, the provider will hit the network and the UI thread.
+            // Neither of these Should be posible so we need to mock it out.
+            _mockExtensionProvider =
+                new Mock<VisualStudioAccountProvider>(_mockAccountManager.Object, mockDte.Object);
             _mockExtensionProvider
                 .Setup(x => x.AccountHasAccess(It.IsAny<Uri>(), It.IsAny<IWebProxy>(),
                     It.IsAny<ICredentials>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(true));
-            _mockExtensionProvider.Setup(x => x.LookupTenant(It.IsAny<Uri>(), It.IsAny<IWebProxy>(), It.IsAny<CancellationToken>()))
+            _mockExtensionProvider
+                .Setup(x => x.LookupTenant(It.IsAny<Uri>(), It.IsAny<IWebProxy>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(TestTenantId));
-            // Mock out the Prompt user for account only if the interactive is true.  we want to let the non-interactive
-            // test call base since it should evaluate before we do any UI.
-            _mockExtensionProvider.Setup(
-                x => x.PromptUserForAccount(It.IsAny<string>(), It.IsAny<VSAccountProvider>(), false, It.IsAny<CancellationToken>()))
+            // Mock out the Prompt user for account only if the interactive is true.  we want to let the
+            // non -interactive test call base since it should evaluate before we do any UI.
+            _mockExtensionProvider
+                .Setup(x => x.PromptUserForAccount(It.IsAny<string>(), It.IsAny<VSAccountProvider>(),
+                    false, It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(_mockUserEnteredCredentials.Object));
             _mockExtensionProvider
                 .Setup(x => x.GetTokenFromAccount(It.IsAny<AccountAndTenant>(), It.IsAny<VSAccountProvider>(),
@@ -65,7 +68,8 @@ namespace NuGet.VsExtension.Test
             {
                 UniqueId = "1",
                 ParentProviderId = Guid.NewGuid(),
-                DisplayInfo = new AccountDisplayInfo("accountName", "providerName", "userName", new byte[0], new byte[0]),
+                DisplayInfo = new AccountDisplayInfo("accountName", "providerName", "userName", new byte[0],
+                    new byte[0]),
                 Authenticator = "authenticator",
                 SupportedAccountProviders = new List<Guid>().AsReadOnly(),
                 Properties = new Dictionary<string, string>()
@@ -84,7 +88,8 @@ namespace NuGet.VsExtension.Test
             var nonInteractive = false;
 
             // Act
-            var cred = await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive, CancellationToken.None);
+            var cred = await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive,
+                CancellationToken.None);
 
             // Assert
             Assert.Null(cred);
@@ -103,7 +108,8 @@ namespace NuGet.VsExtension.Test
 
             // Act - Assert
             await Assert.ThrowsAsync<ArgumentNullException>(
-                async () => await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive, CancellationToken.None));
+                async () => await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive,
+                    CancellationToken.None));
         }
 
         [Fact]
@@ -118,11 +124,12 @@ namespace NuGet.VsExtension.Test
             var nonInteractive = false;
 
             // Act
-            var cred = await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive, CancellationToken.None);
+            var cred = await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive,
+                CancellationToken.None);
 
             // Assert
-            _mockExtensionProvider.Verify( //we prompted the user for an account
-                x => x.PromptUserForAccount(It.IsAny<string>(), It.IsAny<VSAccountProvider>(), false, It.IsAny<CancellationToken>()), 
+            _mockExtensionProvider.Verify( x => x.PromptUserForAccount(
+                It.IsAny<string>(), It.IsAny<VSAccountProvider>(), false,It.IsAny<CancellationToken>()),
                 Times.Once);
             Assert.Equal(cred, _mockUserEnteredCredentials.Object); //get returned the user credentails
         }
@@ -131,7 +138,8 @@ namespace NuGet.VsExtension.Test
         public async Task Get_WhenUriNotVSO_ThenReturnsNull()
         {
             // Arange
-            _mockExtensionProvider.Setup(x => x.LookupTenant(It.IsAny<Uri>(), It.IsAny<IWebProxy>(), It.IsAny<CancellationToken>()))
+            _mockExtensionProvider
+                .Setup(x => x.LookupTenant(It.IsAny<Uri>(), It.IsAny<IWebProxy>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(""));
 
             var provider = _mockExtensionProvider.Object;
@@ -142,7 +150,8 @@ namespace NuGet.VsExtension.Test
             var nonInteractive = false;
 
             // Act
-            var cred = await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive, CancellationToken.None);
+            var cred = await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive,
+                CancellationToken.None);
 
             // Assert
             Assert.Null(cred);
@@ -160,8 +169,8 @@ namespace NuGet.VsExtension.Test
             var nonInteractive = true;
 
             // Act
-            var exception = await Assert.ThrowsAsync<Exception>(
-                async () => await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive, CancellationToken.None));
+            var exception = await Assert.ThrowsAsync<Exception>(async () =>
+                await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive, CancellationToken.None));
 
             // Assert
             Assert.Contains("No valid credentials", exception.Message);
@@ -183,7 +192,8 @@ namespace NuGet.VsExtension.Test
             var nonInteractive = false;
 
             // Act
-            var cred = await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive, CancellationToken.None);
+            var cred = await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive,
+                CancellationToken.None);
 
             // Assert
             Assert.NotNull(cred);
@@ -218,7 +228,8 @@ namespace NuGet.VsExtension.Test
             var nonInteractive = false;
 
             // Act
-            var cred = await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive, CancellationToken.None);
+            var cred = await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive,
+                CancellationToken.None);
 
             // Assert
             Assert.NotNull(cred);
@@ -256,7 +267,8 @@ namespace NuGet.VsExtension.Test
             var nonInteractive = false;
 
             // Act
-            var cred = await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive, CancellationToken.None);
+            var cred = await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive,
+                CancellationToken.None);
 
             // Assert
             Assert.NotNull(cred);
@@ -267,8 +279,9 @@ namespace NuGet.VsExtension.Test
                     It.IsAny<bool>(),
                     It.IsAny<CancellationToken>()),
                 Times.Never);
-            _mockExtensionProvider.Verify( //we prompted the user for an account
-                x => x.PromptUserForAccount(It.IsAny<string>(), It.IsAny<VSAccountProvider>(), false, It.IsAny<CancellationToken>()),
+            _mockExtensionProvider.Verify(
+                x => x.PromptUserForAccount(It.IsAny<string>(), It.IsAny<VSAccountProvider>(), false,
+                    It.IsAny<CancellationToken>()),
                 Times.Once);
 
             Assert.Equal(cred, _mockUserEnteredCredentials.Object); //get returned the user credentails
@@ -293,8 +306,9 @@ namespace NuGet.VsExtension.Test
                 .Setup(x => x.GetTokenFromAccount(It.IsAny<AccountAndTenant>(), It.IsAny<VSAccountProvider>(),
                     It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(_mockUserEnteredCredentials.Object));
-            _mockExtensionProvider.Setup(
-                x => x.AccountHasAccess(It.IsAny<Uri>(), It.IsAny<IWebProxy>(), It.IsAny<ICredentials>(), It.IsAny<CancellationToken>()))
+            _mockExtensionProvider
+                .Setup(x => x.AccountHasAccess(It.IsAny<Uri>(), It.IsAny<IWebProxy>(), It.IsAny<ICredentials>(),
+                    It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(true));
 
             var provider = _mockExtensionProvider.Object;
@@ -305,13 +319,15 @@ namespace NuGet.VsExtension.Test
             var nonInteractive = false;
 
             // Act
-            var cred = await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive, CancellationToken.None);
+            var cred = await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive,
+                CancellationToken.None);
 
             // Assert
             Assert.NotNull(cred);
-            _mockExtensionProvider.Verify( //we prompted the user for an account
-                x => x.PromptUserForAccount(It.IsAny<string>(), It.IsAny<VSAccountProvider>(), false, It.IsAny<CancellationToken>()), 
-                Times.Once);
+            _mockExtensionProvider.Verify(
+                    x => x.PromptUserForAccount(It.IsAny<string>(), It.IsAny<VSAccountProvider>(), false,
+                        It.IsAny<CancellationToken>()),
+                    Times.Once);
             Assert.Equal(cred, _mockUserEnteredCredentials.Object); //get returned the user credentails
 
         }
@@ -323,8 +339,9 @@ namespace NuGet.VsExtension.Test
             var account = GetTestAccount();
             var accounts = new List<Account> { account };
             _mockAccountManager.Setup(x => x.Store.GetAllAccounts()).Returns(accounts.AsReadOnly());
-            _mockExtensionProvider.Setup(
-                x => x.AccountHasAccess(It.IsAny<Uri>(), It.IsAny<IWebProxy>(), It.IsAny<ICredentials>(), It.IsAny<CancellationToken>()))
+            _mockExtensionProvider
+                .Setup(x => x.AccountHasAccess(It.IsAny<Uri>(), It.IsAny<IWebProxy>(), It.IsAny<ICredentials>(),
+                    It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(false));
 
             var provider = _mockExtensionProvider.Object;
@@ -335,12 +352,14 @@ namespace NuGet.VsExtension.Test
             var nonInteractive = false;
 
             // Act
-            var cred = await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive, CancellationToken.None);
+            var cred = await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive,
+                CancellationToken.None);
 
             // Assert
             Assert.NotNull(cred);
             _mockExtensionProvider.Verify( //we prompted the user for an account
-                x => x.PromptUserForAccount(It.IsAny<string>(), It.IsAny<VSAccountProvider>(), false, It.IsAny<CancellationToken>()),
+                x => x.PromptUserForAccount(It.IsAny<string>(), It.IsAny<VSAccountProvider>(), false,
+                    It.IsAny<CancellationToken>()),
                 Times.Once);
             Assert.Equal(cred, _mockUserEnteredCredentials.Object); //get returned the user credentails
         }

@@ -94,7 +94,8 @@ namespace NuGet.Credentials
             return task;
         }
 
-        private PluginCredentialResponse Execute(PluginCredentialRequest request, CancellationToken cancellationToken)
+        private PluginCredentialResponse Execute(PluginCredentialRequest request,
+            CancellationToken cancellationToken)
         { 
             string requestString = string.Concat(JsonConvert.SerializeObject(request), Environment.NewLine);
 

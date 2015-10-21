@@ -25,6 +25,7 @@ namespace NuGet.Credentials
             = new ConcurrentDictionary<string, ICredentials>();
 
         private readonly bool _nonInteractive;
+        private readonly bool _useCache;
         private readonly Semaphore _providerSemaphore = new Semaphore(1, 1);
 
         private Action<string> ErrorDelegate { get; }
@@ -35,7 +36,10 @@ namespace NuGet.Credentials
         /// <param name="errorDelegate">Used to write error messages to the user</param>
         /// <param name="nonInteractive">If true, the nonInteractive flag will be passed to providers.
         /// NonInteractive requests must not promt the user for credentials.</param>
-        public CredentialService(Action<string> errorDelegate, bool nonInteractive)
+        /// <param name="useCache">If true, maintain a cache of credentials per provider. This is set
+        /// to true by the Visual Studio Extension, which initiates requests in parallel
+        /// in multi-project builds, and for which we do not want multiple credential prompts.</param>
+        public CredentialService(Action<string> errorDelegate, bool nonInteractive, bool useCache)
         {
             if (errorDelegate == null)
             {
@@ -44,6 +48,7 @@ namespace NuGet.Credentials
 
             ErrorDelegate = errorDelegate;
             _nonInteractive = nonInteractive;
+            _useCache = useCache;
             Providers = new List<ICredentialProvider>(_defaultProviders);
         }
 
@@ -90,7 +95,6 @@ namespace NuGet.Credentials
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var retryKey = RetryCacheKey(uri, isProxy, provider);
-                var credentialKey = CredentialCacheKey(uri, isProxy, provider);
                 var isRetry = _retryCache.ContainsKey(retryKey);
 
                 try
@@ -106,23 +110,16 @@ namespace NuGet.Credentials
                     // so unles we determin there is a necessary performance improvemnt that can
                     // be gained with this optimization we have opted to take a larger lock.
                     _providerSemaphore.WaitOne();
-                    // expire the cache on retries
-                    if (isRetry)
-                    {
-                        ICredentials removed;
-                        _providerCredentialCache.TryRemove(credentialKey, out removed);
-                    }
-                    else if (_providerCredentialCache.TryGetValue(credentialKey, out response))
-                    {
-                        return response;
-                    }
 
-                    response = await provider.Get(uri, proxy, isProxyRequest: isProxy, isRetry: isRetry,
-                                        nonInteractive: _nonInteractive, cancellationToken: cancellationToken);
+                    if (!TryFromCredentialCache(uri, isProxy, isRetry, provider, out response))
+                    {
+                        response = await provider.Get(uri, proxy, isProxyRequest: isProxy, isRetry: isRetry,
+                            nonInteractive: _nonInteractive, cancellationToken: cancellationToken);
+                    }
 
                     if (response != null)
                     {
-                        _providerCredentialCache[credentialKey] = response;
+                        AddToCredentialCache(uri, isProxy, provider, response);
                         _retryCache[retryKey] = true;
                         break;
                     }
@@ -134,6 +131,38 @@ namespace NuGet.Credentials
             }
 
             return response;
+        }
+
+        private bool TryFromCredentialCache(Uri uri, bool isProxy, bool isRetry, ICredentialProvider provider,
+            out ICredentials credentials)
+        {
+            credentials = null;
+
+            if (!_useCache)
+            {
+                return false;
+            }
+
+            var key = CredentialCacheKey(uri, isProxy, provider);
+            if (isRetry)
+            {
+                ICredentials removed;
+                _providerCredentialCache.TryRemove(key, out removed);
+                return false;
+            }
+
+            return _providerCredentialCache.TryGetValue(key, out credentials);
+        }
+
+        private void AddToCredentialCache(Uri uri, bool isProxy, ICredentialProvider provider,
+            ICredentials credentials)
+        {
+            if (!_useCache || credentials == null)
+            {
+                return;
+            }
+
+            _providerCredentialCache[CredentialCacheKey(uri, isProxy, provider)] = credentials;
         }
 
         private static string RetryCacheKey(Uri uri, bool isProxy, ICredentialProvider provider)

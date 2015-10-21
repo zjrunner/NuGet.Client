@@ -26,10 +26,12 @@ namespace NuGet.Test.TestExtensions.TestablePluginCredentialProvider
                 ?? Environment.GetEnvironmentVariable("NUGET_FAKECREDENTIALHELPER_RESPONSEEXITCODE");
             var responseUsername = request.IsRetry
                 ? request.ResponseUsername
-                : request.ResponseUsername ?? Environment.GetEnvironmentVariable("NUGET_FAKECREDENTIALHELPER_RESPONSEUSERNAME");
+                : request.ResponseUsername
+                    ?? Environment.GetEnvironmentVariable("NUGET_FAKECREDENTIALHELPER_RESPONSEUSERNAME");
             var responsePassword = request.IsRetry
                 ? request.ResponsePassword
-                : request.ResponsePassword ?? Environment.GetEnvironmentVariable("NUGET_FAKECREDENTIALHELPER_RESPONSEPASSWORD");
+                : request.ResponsePassword
+                    ?? Environment.GetEnvironmentVariable("NUGET_FAKECREDENTIALHELPER_RESPONSEPASSWORD");
 
 
 
