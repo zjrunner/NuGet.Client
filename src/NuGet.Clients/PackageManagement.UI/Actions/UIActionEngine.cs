@@ -297,15 +297,22 @@ namespace NuGet.PackageManagement.UI
 
                 foreach (var actionTuple in actions)
                 {
-                    packageIds.Add(actionTuple.Item2.PackageIdentity.Id);
+                    var package = actionTuple.Item2.PackageIdentity;
+                    packageIds.Add(package.Id);
 
                     if (actionTuple.Item2.NuGetProjectActionType == NuGetProjectActionType.Install)
                     {
-                        installed[actionTuple.Item2.PackageIdentity.Id] = actionTuple.Item2.PackageIdentity;
+                        installed[package.Id] =
+                            new PackageIdentity(
+                                package.Id,
+                                package.Version);
                     }
                     else
                     {
-                        uninstalled[actionTuple.Item2.PackageIdentity.Id] = actionTuple.Item2.PackageIdentity;
+                        uninstalled[package.Id] =
+                            new PackageIdentity(
+                                package.Id,
+                                package.Version);
                     }
                 }
 
