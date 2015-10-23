@@ -68,8 +68,6 @@
       <DesignTime>True</DesignTime>
     </Compile>
     <Compile Include="SettingsToLegacySettings.cs" />
-    <Compile Include="SleepingCredentialProvider.cs" />
-    <Compile Include="VisualStudioProxyCredentialProvider.cs" />
     <Compile Include="VisualStudioAccountProvider.cs" />
     <Compile Include="VisualStudioCredentialProvider.cs" />
     <Compile Include="VisualStudioUIContext.cs" />
@@ -129,7 +127,7 @@
     <None Include="project.json" />
     <None Include="Resources\nugetAbout.ico" />
     <None Include="Resources\Toolbar.png" />
-	<None Include="source.extension.vsixmanifest">
+    <None Include="source.extension.vsixmanifest">
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>

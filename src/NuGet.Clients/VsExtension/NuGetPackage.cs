@@ -340,7 +340,7 @@ namespace NuGetVSExtension
                 new CredentialProviderAdapter(new SettingsCredentialProvider(
                     NuGet.NullCredentialProvider.Instance, packageSourceProvider)),
                 new VisualStudioAccountProvider(),
-                new VisualStudioProxyCredentialProvider(webProxy)
+                new VisualStudioCredentialProvider(webProxy)
             };
 
             var credentialService = new CredentialService(
