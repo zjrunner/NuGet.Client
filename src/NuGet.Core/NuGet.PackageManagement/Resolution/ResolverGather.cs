@@ -185,20 +185,15 @@ namespace NuGet.PackageManagement
                 combinedResults.UnionWith(result.Packages);
             }
 
-            List<String> allPrimarySourcesList = new List<string>();
-            foreach (var src in _primaryResources)
-            {
-                allPrimarySourcesList.Add(src.Source.PackageSource.Source);
-            }
-
-            var allPrimarySources = String.Join(",", allPrimarySourcesList);
-
             // Throw if a primary target was not found
             // The primary package may be missing if there are network issues and the sources were unreachable
             foreach (var targetId in allPrimaryTargets)
             {
                 if (!combinedResults.Any(package => string.Equals(package.Id, targetId, StringComparison.OrdinalIgnoreCase)))
                 {
+                    var allPrimarySources = String.Join(",", 
+                        _primaryResources.Select(src => src.Source.PackageSource.Source));
+
                     string message = String.Format(Strings.PackageNotFoundInPrimarySources, targetId, allPrimarySources);
                     throw new InvalidOperationException(message);
                 }
