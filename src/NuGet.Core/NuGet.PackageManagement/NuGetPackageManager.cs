@@ -653,7 +653,7 @@ namespace NuGet.PackageManagement
                 };
 
                 var gatherModes = new GatherMode[] { GatherMode.Minimal, GatherMode.Full };
-                List<PackageIdentity> resolverSolution = null;
+                IEnumerable<PackageIdentity> resolverSolution = null;
                 IEnumerable<SourcePackageDependencyInfo> prunedAvailablePackages = null;
                 var displayResolveLogMessage = true;
 
@@ -771,10 +771,9 @@ namespace NuGet.PackageManagement
                     }
 
                     resolverSolution = packageResolver.Resolve(
-                        packageResolverContext, 
-                        diagnoseAndThrowOnFailure, 
-                        token)
-                        .AsList();
+                        packageResolverContext,
+                        diagnoseAndThrowOnFailure,
+                        token);
 
                     if (resolverSolution != null)
                     {
@@ -1142,7 +1141,7 @@ namespace NuGet.PackageManagement
                     preferredPackageReferences.Add(new Packaging.PackageReference(packageIdentity, targetFramework));
 
                     var gatherModes = new GatherMode[] { GatherMode.Minimal, GatherMode.Full };
-                    List<PackageIdentity> resolverSolution = null;
+                    IEnumerable<PackageIdentity> resolverSolution = null;
                     IEnumerable<SourcePackageDependencyInfo> prunedAvailablePackages = null;
                     var displayResolveLogMessage = true;
 
@@ -1230,7 +1229,10 @@ namespace NuGet.PackageManagement
                                 packageIdentity);
                         }
 
-                        resolverSolution = packageResolver.Resolve(packageResolverContext, diagnoseAndThrowOnFailure, token).AsList();
+                        resolverSolution = packageResolver.Resolve(
+                            packageResolverContext,
+                            diagnoseAndThrowOnFailure,
+                            token);
 
                         if (resolverSolution != null)
                         {

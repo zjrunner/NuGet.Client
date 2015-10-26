@@ -136,9 +136,25 @@ namespace NuGet.PackageManagement
                 // We are done when the queue is empty, and the number of finished requests matches the total request count
                 if (_gatherRequests.Count < 1
                     && _workerTasks.Count < 1
-                    && completedTargets.Count == _allPrimaryTargets.Count)
+                    && completedTargets.Count == _allPrimaryTargets.Count
+                    && _context.InstalledPackages.All(reference => AreRequestsComplete(reference.Id)))
                 {
                     break;
+                }
+            }
+
+            // Add in the existing packages if they were not targets
+            foreach (var installed in _context.InstalledPackages)
+            {
+                if (!_allPrimaryTargets.Contains(installed.Id))
+                {
+                    var currentPackage = GetResultPackages(installed.Id)
+                        .SingleOrDefault(package => PackageIdentity.Comparer.Equals(installed, package));
+
+                    if (currentPackage != null)
+                    {
+                        combinedResults.Add(currentPackage);
+                    }
                 }
             }
 
@@ -161,8 +177,16 @@ namespace NuGet.PackageManagement
             }
             else
             {
+                var installedPackage = _context.InstalledPackages
+                    .SingleOrDefault(package =>
+                    package.Id.Equals(targetId, StringComparison.OrdinalIgnoreCase));
+
+                var allowPrelease = (installedPackage?.Version.IsPrerelease == true)
+                    || _context.ResolutionContext.IncludePrerelease;
+
                 target = targetPackages
-                    .Where(package => package.Listed)
+                    .Where(package => (package.Listed || _context.ResolutionContext.IncludeUnlisted)
+                        && (allowPrelease || !package.Version.IsPrerelease))
                     .OrderByDescending(package => package.Version)
                     .FirstOrDefault();
             }
@@ -207,7 +231,11 @@ namespace NuGet.PackageManagement
 
                         if (bestMatch != null)
                         {
-                            complete &= WalkAndQueueDependencies(packageSet, bestMatch, resolverComparer, depth);
+                            var bestMatchPackage = inRange
+                                .Single(dependencyPackage => 
+                                    PackageIdentity.Comparer.Equals(dependencyPackage, bestMatch));
+
+                            complete &= WalkAndQueueDependencies(packageSet, bestMatchPackage, resolverComparer, depth);
                         }
                     }
                     else
@@ -331,7 +359,6 @@ namespace NuGet.PackageManagement
                 // Initialize dependency info resources in parallel
                 await InitializeResourcesAsync(token);
 
-
                 // resolve primary targets only from primary sources
                 foreach (var primaryTarget in _context.PrimaryTargets)
                 {
@@ -426,6 +453,15 @@ namespace NuGet.PackageManagement
                         var result = new GatherResult(request, packages);
 
                         _results.Add(result);
+
+                        List<GatherRequest> requests;
+                        if (!_requestsById.TryGetValue(installedPackage.Id, out requests))
+                        {
+                            requests = new List<GatherRequest>(1);
+                            _requestsById.Add(installedPackage.Id, requests);
+                        }
+
+                        requests.Add(request);
                     }
                     else
                     {
@@ -677,6 +713,7 @@ namespace NuGet.PackageManagement
                     if (!_requestsById.TryGetValue(package.Id, out idRequests))
                     {
                         idRequests = new List<GatherRequest>(1);
+                        _requestsById.Add(package.Id, idRequests);
                     }
 
                     idRequests.Add(request);
@@ -692,7 +729,7 @@ namespace NuGet.PackageManagement
             var expected = _requestsById[packageId];
 
             var currentResults = _results.ToArray();
-            var complete = expected.Union(currentResults.Select(result => result.Request));
+            var complete = expected.Intersect(currentResults.Select(result => result.Request));
 
             return expected.Count == complete.Count();
         }

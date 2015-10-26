@@ -43,7 +43,15 @@ namespace NuGet.Resolver
             {
                 if (!context.AvailablePackages.Any(p => StringComparer.OrdinalIgnoreCase.Equals(p.Id, requiredId)))
                 {
-                    throw new NuGetResolverInputException(String.Format(CultureInfo.CurrentCulture, Strings.MissingDependencyInfo, requiredId));
+                    if (diagnoseFailures)
+                    {
+                        throw new NuGetResolverInputException(String.Format(CultureInfo.CurrentCulture, Strings.MissingDependencyInfo, requiredId));
+                    }
+                    else
+                    {
+                        // this cannot be resolved, exit here
+                        return null;
+                    }
                 }
             }
 
@@ -156,7 +164,7 @@ namespace NuGet.Resolver
                 }
             }
 
-            if (diagnoseFailures == true)
+            if (diagnoseFailures)
             {
                 // no solution was found, throw an error with a diagnostic message
                 var message = ResolverUtility.GetDiagnosticMessage(bestSolution, context.AvailablePackages, context.PackagesConfig, context.TargetIds, context.PackageSources);

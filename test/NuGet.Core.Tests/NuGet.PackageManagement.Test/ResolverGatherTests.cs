@@ -354,7 +354,7 @@ namespace NuGet.Test
             // Act
             // Run again
             var resolverGatherAOnly = new ResolverGather(contextAOnly);
-            results = await resolverGather.GatherAsync(CancellationToken.None);
+            results = await resolverGatherAOnly.GatherAsync(CancellationToken.None);
 
             var check = results.GroupBy(e => e.Id).OrderBy(e => e.Key).ToList();
 
@@ -434,7 +434,7 @@ namespace NuGet.Test
             // Act
             // Run again
             var resolverGatherAOnly = new ResolverGather(contextAOnly);
-            results = await resolverGather.GatherAsync(CancellationToken.None);
+            results = await resolverGatherAOnly.GatherAsync(CancellationToken.None);
 
             var check = results.GroupBy(e => e.Id).OrderBy(e => e.Key).ToList();
 
