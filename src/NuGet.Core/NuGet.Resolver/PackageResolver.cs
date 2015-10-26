@@ -162,6 +162,8 @@ namespace NuGet.Resolver
                 var message = ResolverUtility.GetDiagnosticMessage(bestSolution, context.AvailablePackages, context.PackagesConfig, context.TargetIds, context.PackageSources);
                 throw new NuGetResolverConstraintException(message);
             }
+
+            return null;
         }
 
         /// <summary>
