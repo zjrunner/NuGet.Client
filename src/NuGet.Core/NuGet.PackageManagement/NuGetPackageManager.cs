@@ -1066,62 +1066,102 @@ namespace NuGet.PackageManagement
                         AllowDowngrades = downgradeAllowed
                     };
 
-                    var availablePackageDependencyInfoWithSourceSet = await ResolverGather.GatherAsync(gatherContext, token);
-
-                    if (!availablePackageDependencyInfoWithSourceSet.Any())
-                    {
-                        throw new InvalidOperationException(string.Format(Strings.UnableToGatherDependencyInfo, packageIdentity));
-                    }
-
-                    // Prune the results down to only what we would allow to be installed
-
-                    // Keep only the target package we are trying to install for that Id
-                    var prunedAvailablePackages = PrunePackageTree.RemoveAllVersionsForIdExcept(availablePackageDependencyInfoWithSourceSet, packageIdentity);
-
-                    if (!downgradeAllowed)
-                    {
-                        prunedAvailablePackages = PrunePackageTree.PruneDowngrades(prunedAvailablePackages, projectInstalledPackageReferences);
-                    }
-
-                    if (!resolutionContext.IncludePrerelease)
-                    {
-                        prunedAvailablePackages = PrunePackageTree.PrunePreleaseForStableTargets(
-                            prunedAvailablePackages,
-                            packageTargetsForResolver,
-                            new[] { packageIdentity });
-                    }
-
-                    // Verify that the target is allowed by packages.config
-                    GatherExceptionHelpers.ThrowIfVersionIsDisallowedByPackagesConfig(packageIdentity.Id, projectInstalledPackageReferences, prunedAvailablePackages);
-
-                    // Remove versions that do not satisfy 'allowedVersions' attribute in packages.config, if any
-                    prunedAvailablePackages = PrunePackageTree.PruneDisallowedVersions(prunedAvailablePackages, projectInstalledPackageReferences);
-
-                    // Step-2 : Call PackageResolver.Resolve to get new list of installed packages
+                    nuGetProjectContext.Log(
+                        ProjectManagement.MessageLevel.Info,
+                        Strings.AttemptingToResolveDependencies,
+                        packageIdentity,
+                        resolutionContext.DependencyBehavior);
 
                     // Note: resolver prefers installed package versions if the satisfy the dependency version constraints
                     // So, since we want an exact version of a package, create a new list of installed packages where the packageIdentity being installed
                     // is present after removing the one with the same id
-                    var preferredPackageReferences = new List<Packaging.PackageReference>(projectInstalledPackageReferences.Where(pr =>
-                        !pr.PackageIdentity.Id.Equals(packageIdentity.Id, StringComparison.OrdinalIgnoreCase)));
+                    var preferredPackageReferences = new List<Packaging.PackageReference>(
+                        projectInstalledPackageReferences.Where(pr =>
+                            !pr.PackageIdentity.Id.Equals(packageIdentity.Id, StringComparison.OrdinalIgnoreCase)));
+
                     preferredPackageReferences.Add(new Packaging.PackageReference(packageIdentity, targetFramework));
 
-                    var packageResolverContext = new PackageResolverContext(resolutionContext.DependencyBehavior,
-                        new string[] { packageIdentity.Id },
-                        oldListOfInstalledPackages.Select(package => package.Id),
-                        projectInstalledPackageReferences,
-                        preferredPackageReferences.Select(package => package.PackageIdentity),
-                        prunedAvailablePackages,
-                        SourceRepositoryProvider.GetRepositories().Select(s => s.PackageSource));
+                    var gatherModes = new GatherMode[] { GatherMode.Minimal, GatherMode.Full };
+                    List<PackageIdentity> resolverSolution = null;
+                    IEnumerable<SourcePackageDependencyInfo> prunedAvailablePackages = null;
 
-                    nuGetProjectContext.Log(ProjectManagement.MessageLevel.Info, Strings.AttemptingToResolveDependencies, packageIdentity, resolutionContext.DependencyBehavior);
-
-                    var packageResolver = new PackageResolver();
-
-                    var newListOfInstalledPackages = packageResolver.Resolve(packageResolverContext, token);
-                    if (newListOfInstalledPackages == null)
+                    foreach (var gatherMode in gatherModes)
                     {
-                        throw new InvalidOperationException(string.Format(Strings.UnableToResolveDependencyInfo, packageIdentity, resolutionContext.DependencyBehavior));
+                        HashSet<SourcePackageDependencyInfo> gatherSet;
+
+                        if (gatherMode == GatherMode.Minimal)
+                        {
+                            // Gather the minimal set of packages
+                            gatherSet = await ResolverGather.GatherIdealAsync(gatherContext, token);
+                        }
+                        else
+                        {
+                            // Gather all packages
+                            gatherSet = await ResolverGather.GatherAsync(gatherContext, token);
+                        }
+
+                        // Prune the results down to only what we would allow to be installed
+                        // Keep only the target package we are trying to install for that Id
+                        prunedAvailablePackages = PrunePackageTree.RemoveAllVersionsForIdExcept(gatherSet, packageIdentity);
+
+                        if (!downgradeAllowed)
+                        {
+                            prunedAvailablePackages = PrunePackageTree.PruneDowngrades(prunedAvailablePackages, projectInstalledPackageReferences);
+                        }
+
+                        if (!resolutionContext.IncludePrerelease)
+                        {
+                            prunedAvailablePackages = PrunePackageTree.PrunePreleaseForStableTargets(
+                                prunedAvailablePackages,
+                                packageTargetsForResolver,
+                                new[] { packageIdentity });
+                        }
+
+                        // Verify that the target is allowed by packages.config
+                        if (gatherMode == GatherMode.Minimal)
+                        {
+                            var conflicts = GatherExceptionHelpers.GetConflictingAllowedVersionEntries(
+                                new string[] { packageIdentity.Id },
+                                projectInstalledPackageReferences,
+                                prunedAvailablePackages);
+
+                            if (conflicts.Any())
+                            {
+                                // A full gather is needed
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            GatherExceptionHelpers.ThrowIfVersionIsDisallowedByPackagesConfig(
+                                packageIdentity.Id,
+                                projectInstalledPackageReferences,
+                                prunedAvailablePackages);
+                        }
+
+                        // Remove versions that do not satisfy 'allowedVersions' attribute in packages.config, if any
+                        prunedAvailablePackages = PrunePackageTree.PruneDisallowedVersions(
+                            prunedAvailablePackages, 
+                            projectInstalledPackageReferences);
+
+                        // Step-2 : Call PackageResolver.Resolve to get new list of installed packages
+                        var packageResolverContext = new PackageResolverContext(resolutionContext.DependencyBehavior,
+                            new string[] { packageIdentity.Id },
+                            oldListOfInstalledPackages.Select(package => package.Id),
+                            projectInstalledPackageReferences,
+                            preferredPackageReferences.Select(package => package.PackageIdentity),
+                            prunedAvailablePackages,
+                            SourceRepositoryProvider.GetRepositories().Select(s => s.PackageSource));
+
+                        var packageResolver = new PackageResolver();
+                        var diagnoseAndThrowOnFailure = gatherMode == GatherMode.Full;
+                        resolverSolution = packageResolver.Resolve(packageResolverContext, diagnoseAndThrowOnFailure, token).AsList();
+
+                        if (resolverSolution != null)
+                        {
+                            // stop looping when a solution has been found
+                            break;
+                        }
                     }
 
                     // Step-3 : Get the list of nuGetProjectActions to perform, install/uninstall on the nugetproject
@@ -1131,7 +1171,7 @@ namespace NuGet.PackageManagement
                     var newPackagesToUninstall = new List<PackageIdentity>();
                     foreach (var oldInstalledPackage in oldListOfInstalledPackages)
                     {
-                        var newPackageWithSameId = newListOfInstalledPackages
+                        var newPackageWithSameId = resolverSolution
                             .FirstOrDefault(np =>
                                 oldInstalledPackage.Id.Equals(np.Id, StringComparison.OrdinalIgnoreCase) &&
                                 !oldInstalledPackage.Version.Equals(np.Version));
@@ -1141,7 +1181,7 @@ namespace NuGet.PackageManagement
                             newPackagesToUninstall.Add(oldInstalledPackage);
                         }
                     }
-                    var newPackagesToInstall = newListOfInstalledPackages.Where(p => !oldListOfInstalledPackages.Contains(p));
+                    var newPackagesToInstall = resolverSolution.Where(p => !oldListOfInstalledPackages.Contains(p));
 
                     foreach (var newPackageToUninstall in newPackagesToUninstall)
                     {
@@ -1152,7 +1192,7 @@ namespace NuGet.PackageManagement
                     // the scenario here is that the user might have done an uninstall-package -Force on a particular package
 
                     // firstly, packageIds that are a dependency of the target
-                    var allowed = GetDependencies(new[] { packageIdentity.Id }, newListOfInstalledPackages, prunedAvailablePackages);
+                    var allowed = GetDependencies(new[] { packageIdentity.Id }, resolverSolution, prunedAvailablePackages);
 
                     // secondly, include packages we might be upgrading - at this point that would be the packages we are uninstalling
                     foreach (var package in newPackagesToUninstall)

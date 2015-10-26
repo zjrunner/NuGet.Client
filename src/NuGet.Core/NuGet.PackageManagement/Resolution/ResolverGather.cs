@@ -73,6 +73,17 @@ namespace NuGet.PackageManagement
             return await engine.GatherAsync(token);
         }
 
+        /// <summary>
+        /// Gather packages
+        /// </summary>
+        public static async Task<HashSet<SourcePackageDependencyInfo>> GatherIdealAsync(
+            GatherContext context,
+            CancellationToken token)
+        {
+            var engine = new ResolverGather(context);
+            return await engine.GatherAsync(token);
+        }
+
         private async Task<HashSet<SourcePackageDependencyInfo>> GatherAsync(CancellationToken token)
         {
             token.ThrowIfCancellationRequested();

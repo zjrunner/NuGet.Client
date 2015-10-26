@@ -23,6 +23,14 @@ namespace NuGet.Resolver
         /// </summary>
         public IEnumerable<PackageIdentity> Resolve(PackageResolverContext context, CancellationToken token)
         {
+            return Resolve(context, diagnoseFailures: true, token: token);
+        }
+
+        /// <summary>
+        /// Resolve a package closure
+        /// </summary>
+        public IEnumerable<PackageIdentity> Resolve(PackageResolverContext context, bool diagnoseFailures, CancellationToken token)
+        {
             token.ThrowIfCancellationRequested();
 
             if (context == null)
@@ -148,9 +156,12 @@ namespace NuGet.Resolver
                 }
             }
 
-            // no solution was found, throw an error with a diagnostic message
-            var message = ResolverUtility.GetDiagnosticMessage(bestSolution, context.AvailablePackages, context.PackagesConfig, context.TargetIds, context.PackageSources);
-            throw new NuGetResolverConstraintException(message);
+            if (diagnoseFailures == true)
+            {
+                // no solution was found, throw an error with a diagnostic message
+                var message = ResolverUtility.GetDiagnosticMessage(bestSolution, context.AvailablePackages, context.PackagesConfig, context.TargetIds, context.PackageSources);
+                throw new NuGetResolverConstraintException(message);
+            }
         }
 
         /// <summary>
