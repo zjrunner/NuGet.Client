@@ -664,12 +664,14 @@ namespace NuGet.PackageManagement
                     if (gatherMode == GatherMode.Minimal)
                     {
                         // Gather the minimal set of packages
-                        gatherSet = await ResolverGather.GatherIdealAsync(gatherContext, token);
+                        var resolverGather = new ResolverGather(gatherContext);
+                        gatherSet = await resolverGather.GatherIdealAsync(token);
                     }
                     else
                     {
                         // Gather all packages
-                        gatherSet = await ResolverGather.GatherAsync(gatherContext, token);
+                        var resolverGather = new ResolverGather(gatherContext);
+                        gatherSet = await resolverGather.GatherAsync(token);
                     }
 
                     // Update-Package ALL packages scenarios must always include the packages in the current project
@@ -1151,12 +1153,14 @@ namespace NuGet.PackageManagement
                         if (gatherMode == GatherMode.Minimal)
                         {
                             // Gather the minimal set of packages
-                            gatherSet = await ResolverGather.GatherIdealAsync(gatherContext, token);
+                            var resolverGather = new ResolverGather(gatherContext);
+                            gatherSet = await resolverGather.GatherIdealAsync(token);
                         }
                         else
                         {
                             // Gather all packages
-                            gatherSet = await ResolverGather.GatherAsync(gatherContext, token);
+                            var resolverGather = new ResolverGather(gatherContext);
+                            gatherSet = await resolverGather.GatherAsync(token);
                         }
 
                         // Prune the results down to only what we would allow to be installed
