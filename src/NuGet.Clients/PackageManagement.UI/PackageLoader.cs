@@ -20,7 +20,7 @@ namespace NuGet.PackageManagement.UI
 {
     internal class PackageLoader : ILoader
     {
-        private readonly SourceRepository _sourceRepository;
+        private readonly IEnumerable<SourceRepository> _sourceRepositories;
 
         private readonly NuGetProject[] _projects;
 
@@ -50,10 +50,10 @@ namespace NuGet.PackageManagement.UI
             NuGetPackageManager packageManager,
             IEnumerable<NuGetProject> projects,
             IEnumerable<IVsPackageManagerProvider> providers,
-            SourceRepository sourceRepository,
+            IEnumerable<SourceRepository> sourceRepositories,
             string searchText)
         {
-            _sourceRepository = sourceRepository;
+            _sourceRepositories = sourceRepositories;
             _isSolution = isSolution;
             _packageManager = packageManager;
             _projects = projects.ToArray();
@@ -83,7 +83,7 @@ namespace NuGet.PackageManagement.UI
             }
 
             // Search all / updates available cannot work without a source repo
-            if (_sourceRepository == null)
+            if (_sourceRepositories == null)
             {
                 return SearchResult.Empty;
             }
@@ -93,8 +93,11 @@ namespace NuGet.PackageManagement.UI
                 return await SearchUpdatesAsync(startIndex, ct);
             }
 
+            // TODO: Change to handle multiple sources
+            var sourceRepository = _sourceRepositories.First();
+            
             // normal search
-            var searchResource = await _sourceRepository.GetResourceAsync<UISearchResource>();
+            var searchResource = await sourceRepository.GetResourceAsync<UISearchResource>();
 
             // search in source
             if (searchResource == null)
@@ -244,10 +247,8 @@ namespace NuGet.PackageManagement.UI
             UIMetadataResource metadataResource;
             try
             {
-                metadataResource =
-                _sourceRepository == null ?
-                null :
-                await _sourceRepository.GetResourceAsync<UIMetadataResource>();
+                var sourceRepository = _sourceRepositories.First();
+                metadataResource = sourceRepository == null ? null : await sourceRepository.GetResourceAsync<UIMetadataResource>();
             }
             catch (Exception ex)
             {
@@ -471,7 +472,8 @@ namespace NuGet.PackageManagement.UI
         public async Task<int> CreatePackagesWithUpdatesAsync(CancellationToken ct)
         {
             _packagesWithUpdates = new List<UISearchMetadata>();
-            var metadataResource = await _sourceRepository.GetResourceAsync<UIMetadataResource>();
+            var sourceRepository = _sourceRepositories.First();
+            var metadataResource = await sourceRepository.GetResourceAsync<UIMetadataResource>();
 
             if (metadataResource == null)
             {

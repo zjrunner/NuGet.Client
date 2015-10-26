@@ -23,6 +23,8 @@ using Resx = NuGet.PackageManagement.UI;
 
 namespace NuGet.PackageManagement.UI
 {
+    using Models;
+
     /// <summary>
     /// Interaction logic for PackageManagerControl.xaml
     /// </summary>
@@ -46,6 +48,12 @@ namespace NuGet.PackageManagement.UI
         private readonly Dispatcher _uiDispatcher;
 
         private bool _missingPackageStatus;
+
+        internal SourceRepository ActiveSource { get; private set; }
+
+        internal SourceRepositoryListItem SelecetedSource { get; private set; } 
+
+        private Dictionary<string, IEnumerable<SourceRepository>> _sources;
 
         public PackageManagerModel Model { get; }
 
@@ -207,25 +215,14 @@ namespace NuGet.PackageManagement.UI
             _dontStartNewSearch = true;
             try
             {
-                var oldActiveSource = _topPanel.SourceRepoList.SelectedItem as SourceRepository;
-                var newSources = GetEnabledSources();
-
-                // Update the source repo list with the new value.
-                _topPanel.SourceRepoList.Items.Clear();
-                foreach (var source in newSources)
-                {
-                    _topPanel.SourceRepoList.Items.Add(source);
-                }
-
-                SetNewActiveSource(newSources, oldActiveSource);
+                var oldActiveSource = _topPanel.SourceRepoList.SelectedItem as SourceRepositoryListItem;
+                PopulateSourceListAndSetSelectedSource(oldActiveSource.Id);
 
                 // force a new search explicitly if active source has changed
-                if ((oldActiveSource == null && ActiveSource != null)
-                    || (oldActiveSource != null && ActiveSource == null)
-                    || (oldActiveSource != null && ActiveSource != null &&
-                        !StringComparer.OrdinalIgnoreCase.Equals(
-                            oldActiveSource.PackageSource.Source,
-                            ActiveSource.PackageSource.Source)))
+                if ((oldActiveSource == null && SelecetedSource != null)
+                    || (oldActiveSource != null && SelecetedSource == null)
+                    || (oldActiveSource != null && SelecetedSource != null &&
+                        !StringComparer.OrdinalIgnoreCase.Equals(oldActiveSource.Id,SelecetedSource.Id)))
                 {
                     SaveSettings();
                     SearchPackageInActivePackageSource(_windowSearchHost.SearchQuery.SearchString);
@@ -265,9 +262,9 @@ namespace NuGet.PackageManagement.UI
         public void SaveSettings()
         {
             var settings = new UserSettings();
-            if (ActiveSource != null)
+            if (SelecetedSource != null)
             {
-                settings.SourceRepository = ActiveSource.PackageSource.Name;
+                settings.SourceRepository = SelecetedSource.Id;
             }
 
             settings.ShowPreviewWindow = _detailModel.Options.ShowPreviewWindow;
@@ -291,50 +288,7 @@ namespace NuGet.PackageManagement.UI
 
             return settings;
         }
-
-        /// <summary>
-        /// Calculate the active source after the list of sources have been changed.
-        /// </summary>
-        /// <param name="newSources">The current list of sources.</param>
-        /// <param name="oldActiveSource">The old active source.</param>
-        private void SetNewActiveSource(IEnumerable<SourceRepository> newSources, SourceRepository oldActiveSource)
-        {
-            if (!newSources.Any())
-            {
-                ActiveSource = null;
-            }
-            else
-            {
-                if (oldActiveSource == null)
-                {
-                    // use the first enabled source as the active source
-                    ActiveSource = newSources.FirstOrDefault();
-                }
-                else
-                {
-                    var s = newSources.FirstOrDefault(repo => StringComparer.CurrentCultureIgnoreCase.Equals(
-                        repo.PackageSource.Name, oldActiveSource.PackageSource.Name));
-                    if (s == null)
-                    {
-                        // the old active source does not exist any more. In this case,
-                        // use the first eneabled source as the active source.
-                        ActiveSource = newSources.FirstOrDefault();
-                    }
-                    else
-                    {
-                        // the old active source still exists. Keep it as the active source.
-                        ActiveSource = s;
-                    }
-                }
-            }
-
-            _topPanel.SourceRepoList.SelectedItem = ActiveSource;
-            if (ActiveSource != null)
-            {
-                Model.Context.SourceProvider.PackageSourceProvider.SaveActivePackageSource(ActiveSource.PackageSource);
-            }
-        }
-
+        
         private void AddRestoreBar()
         {
             if (Model.Context.PackageRestoreManager != null)
@@ -435,20 +389,11 @@ namespace NuGet.PackageManagement.UI
 
         private void InitSourceRepoList(UserSettings settings)
         {
-            // init source repo list
-            _topPanel.SourceRepoList.Items.Clear();
-            var enabledSources = GetEnabledSources();
-            foreach (var source in enabledSources)
-            {
-                _topPanel.SourceRepoList.Items.Add(source);
-            }
-
             // get active source name.
             string activeSourceName = null;
 
             // try saved user settings first.
-            if (settings != null
-                && !string.IsNullOrEmpty(settings.SourceRepository))
+            if (!string.IsNullOrEmpty(settings?.SourceRepository))
             {
                 activeSourceName = settings.SourceRepository;
             }
@@ -458,21 +403,53 @@ namespace NuGet.PackageManagement.UI
                 activeSourceName = Model.Context.SourceProvider.PackageSourceProvider.ActivePackageSourceName;
             }
 
-            if (activeSourceName != null)
+            PopulateSourceListAndSetSelectedSource(activeSourceName);
+        }
+
+        private void PopulateSourceListAndSetSelectedSource(string selected)
+        {
+            var sources = new Dictionary<string, IEnumerable<SourceRepository>>();
+            
+            // Clear the ComboBox list
+            _topPanel.SourceRepoList.Items.Clear();
+
+            // Getting the enabled sources from the provider
+            var enabledSources = GetEnabledSources();
+
+            if(string.IsNullOrEmpty(selected))
             {
-                ActiveSource = enabledSources
-                    .FirstOrDefault(s => activeSourceName.Equals(s.PackageSource.Name, StringComparison.CurrentCultureIgnoreCase));
+                // Incase no source supplied choosing the first active source
+                selected = enabledSources.FirstOrDefault()?.PackageSource.Name;
             }
 
-            if (ActiveSource == null)
+            // Adding All sources
+            var allSource = new SourceRepositoryListItem("All", "all");
+            sources.Add(allSource.Id, enabledSources);
+            _topPanel.SourceRepoList.Items.Add(allSource);
+
+            foreach (var source in enabledSources)
             {
-                ActiveSource = enabledSources.FirstOrDefault();
+                // Adding the source to the Dictionary and ComoboBox dropdown list
+                var sourceItem = new SourceRepositoryListItem(source.PackageSource.Name, source.PackageSource.Name);
+                sources.Add(sourceItem.Id, new List<SourceRepository> { source });
+                _topPanel.SourceRepoList.Items.Add(sourceItem);                
             }
 
-            if (ActiveSource != null)
+            if (!string.IsNullOrEmpty(selected))
             {
-                _topPanel.SourceRepoList.SelectedItem = ActiveSource;
+                // Choosing the active source on the SourceList
+                foreach (SourceRepositoryListItem item in _topPanel.SourceRepoList.Items)
+                {
+                    if (item.Id.Equals(selected, StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        _topPanel.SourceRepoList.SelectedItem = item;
+                        SelecetedSource = item;
+                        break;
+                    }
+                }
             }
+
+            _sources = sources;
         }
 
         private bool ShowInstalled
@@ -495,9 +472,7 @@ namespace NuGet.PackageManagement.UI
         {
             get { return _topPanel.CheckboxPrerelease.IsChecked == true; }
         }
-
-        internal SourceRepository ActiveSource { get; private set; }
-
+        
         /// <summary>
         /// This method is called from several event handlers. So, consolidating the use of JTF.Run in this method
         /// </summary>
@@ -512,7 +487,7 @@ namespace NuGet.PackageManagement.UI
                         Model.Context.PackageManager,
                         Model.Context.Projects,
                         Model.Context.PackageManagerProviders,
-                        ActiveSource,
+                        _sources[SelecetedSource.Id],
                         searchText);
                     await loader.InitializeAsync();
                     await _packageList.LoadAsync(loader);
@@ -530,7 +505,7 @@ namespace NuGet.PackageManagement.UI
                     Model.Context.PackageManager,
                     Model.Context.Projects,
                     Model.Context.PackageManagerProviders,
-                    ActiveSource,
+                    _sources[SelecetedSource.Id],
                     String.Empty);
                 await updatesLoader.InitializeAsync();
                 int updatesCount = await updatesLoader.CreatePackagesWithUpdatesAsync(CancellationToken.None);
@@ -601,14 +576,18 @@ namespace NuGet.PackageManagement.UI
                 return;
             }
 
-            ActiveSource = _topPanel.SourceRepoList.SelectedItem as SourceRepository;
-            if (ActiveSource != null)
+            // TODO: validate Selected is not null
+            var selected = _topPanel.SourceRepoList.SelectedItem as SourceRepositoryListItem;
+            IEnumerable<SourceRepository> sources;
+
+            if (_sources.TryGetValue(selected.Id, out sources))
             {
                 _topPanel.SourceToolTip.Visibility = Visibility.Visible;
-                _topPanel.SourceToolTip.DataContext = GetPackageSourceTooltip(ActiveSource.PackageSource);
+                //_topPanel.SourceToolTip.DataContext = GetPackageSourceTooltip(ActiveSource.PackageSource);
 
-                Model.Context.SourceProvider.PackageSourceProvider.SaveActivePackageSource(ActiveSource.PackageSource);
-                SaveSettings();
+                //Model.Context.SourceProvider.PackageSourceProvider.SaveActivePackageSource(ActiveSource.PackageSource);
+                //SaveSettings();
+                SelecetedSource = selected;
                 SearchPackageInActivePackageSource(_windowSearchHost.SearchQuery.SearchString);
                 RefreshAvailableUpdatesCount();
             }

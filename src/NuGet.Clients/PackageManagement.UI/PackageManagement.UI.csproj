@@ -122,6 +122,7 @@
     <Compile Include="Models\PackageItemListViewModel.cs" />
     <Compile Include="Models\PackageStatus.cs" />
     <Compile Include="Models\SearchResult.cs" />
+    <Compile Include="Models\SourceRepositoryListItem.cs" />
     <Compile Include="PackageInstallationInfo.cs" />
     <Compile Include="PackageLoaderOptions.cs" />
     <Compile Include="PackageSolutionDetailControlModel.cs" />
