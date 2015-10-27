@@ -15,10 +15,6 @@ namespace NuGet.Credentials
     /// </summary>
     public class PluginCredentialProvider : ICredentialProvider
     {
-        private readonly string _path;
-
-        private readonly int _timeoutSeconds;
-        
         /// <summary>
         /// Constructor
         /// </summary>
@@ -32,8 +28,8 @@ namespace NuGet.Credentials
                 throw new ArgumentNullException(nameof(path));
             }
 
-            _path = path;
-            _timeoutSeconds = timeoutSeconds;
+            Path = path;
+            TimeoutSeconds = timeoutSeconds;
         }
 
         /// <summary>
@@ -80,12 +76,12 @@ namespace NuGet.Credentials
             }
             catch (Exception e)
             {
-                throw PluginException.Create(_path, e);
+                throw PluginException.Create(Path, e);
             }
 
             if (response.Abort)
             {
-                throw PluginException.CreateAbortMessage(_path, response.AbortMessage ?? string.Empty);
+                throw PluginException.CreateAbortMessage(Path, response.AbortMessage ?? string.Empty);
             }
 
             var result = response.IsValid ? new NetworkCredential(response.Username, response.Password) : null;
@@ -94,6 +90,18 @@ namespace NuGet.Credentials
             return task;
         }
 
+        /// <summary>
+        /// Path to plugin credential provider executable.
+        /// Internal for testability.
+        /// </summary>
+        internal string Path { get; }
+
+        /// <summary>
+        /// Seconds to wait for plugin credential service to respond.
+        /// Internal for testability.
+        /// </summary>
+        internal int TimeoutSeconds { get; }
+
         private PluginCredentialResponse Execute(PluginCredentialRequest request,
             CancellationToken cancellationToken)
         { 
@@ -101,7 +109,7 @@ namespace NuGet.Credentials
 
             var startInfo = new ProcessStartInfo
             {
-                FileName = _path,
+                FileName = Path,
                 WindowStyle = ProcessWindowStyle.Hidden,
                 UseShellExecute = false,
                 RedirectStandardInput = true,
@@ -113,7 +121,7 @@ namespace NuGet.Credentials
             var process = Process.Start(startInfo);
             if (process == null)
             {
-                throw PluginException.CreateNotStartedMessage(_path);
+                throw PluginException.CreateNotStartedMessage(Path);
             }
 
             process.StandardInput.WriteLine(requestString);
@@ -121,15 +129,15 @@ namespace NuGet.Credentials
 
             cancellationToken.Register(() => process.Kill());
 
-            if (!process.WaitForExit(_timeoutSeconds * 1000))
+            if (!process.WaitForExit(TimeoutSeconds * 1000))
             {
-                throw PluginException.CreateTimeoutMessage(_path, _timeoutSeconds);
+                throw PluginException.CreateTimeoutMessage(Path, TimeoutSeconds);
             }
 
             if(process.ExitCode > 0)
             {
                 throw PluginException.CreateWrappedExceptionMessage(
-                    _path,
+                    Path,
                     process.ExitCode,
                     process.StandardOutput.ReadToEnd(),
                     process.StandardError.ReadToEnd());

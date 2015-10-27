@@ -208,7 +208,7 @@ namespace NuGet.Credentials.Test
         }
 
         [Fact]
-        public async Task GetCredentials_WhenRetry_ThenDoesNotReturnesCachedCredential()
+        public async Task GetCredentials_WhenRetry_ThenDoesNotReturnCachedCredential()
         {
             var service = new CredentialService(errorDelegate: TestableErrorWriter, nonInteractive: false,
                 useCache: true)

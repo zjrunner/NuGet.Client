@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using NuGet.Configuration;
 
 namespace NuGet.Credentials
 {
@@ -14,20 +15,26 @@ namespace NuGet.Credentials
     public class PluginCredentialProviderBuilder
     {
         private readonly Configuration.ISettings _settings;
+        private readonly Configuration.IEnvironmentVariableReader _envarReader;
 
-        /// <summary>
-        /// Constructor
-        /// </summary>
-        /// <param name="settings">Settings object, used to discover configured
-        /// plugins.</param>
-        public PluginCredentialProviderBuilder(Configuration.ISettings settings)
+        public PluginCredentialProviderBuilder(Configuration.ISettings settings) : this(settings, new EnvironmentVariableWrapper())
+        {
+        }
+
+        public PluginCredentialProviderBuilder(Configuration.ISettings settings, Configuration.IEnvironmentVariableReader envarReader)
         {
             if (settings == null)
             {
                 throw new ArgumentNullException(nameof(settings));
             }
+            if (envarReader == null)
+            {
+                throw new ArgumentNullException(nameof(envarReader));
+            }
 
             _settings = settings;
+            _envarReader = envarReader;
+
         }
 
         /// <summary>
@@ -87,7 +94,7 @@ namespace NuGet.Credentials
                     path);
             }
 
-            var extensionsPathEnvar = Environment.GetEnvironmentVariable(
+            var extensionsPathEnvar = _envarReader.GetEnvironmentVariable(
                 CredentialsConstants.ExtensionsPathEnvar);
             if (extensionsPathEnvar != null)
             {
@@ -103,11 +110,11 @@ namespace NuGet.Credentials
                 var timeoutSetting = _settings.GetValue(
                     CredentialsConstants.SettingsConfigSection,
                     CredentialsConstants.ProviderTimeoutSecondsSetting);
-                var timeoutEnvar = Environment.GetEnvironmentVariable(
+                var timeoutEnvar = _envarReader.GetEnvironmentVariable(
                     CredentialsConstants.ProviderTimeoutSecondsEnvar);
 
                 if (int.TryParse(timeoutSetting, out value)
-                    || int.TryParse( timeoutEnvar, out value))
+                    || int.TryParse(timeoutEnvar, out value))
                 {
                     return value;
                 }
