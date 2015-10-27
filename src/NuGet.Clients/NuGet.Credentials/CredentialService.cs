@@ -26,6 +26,11 @@ namespace NuGet.Credentials
 
         private readonly bool _nonInteractive;
         private readonly bool _useCache;
+        /// <summary>
+        /// This semaphore ensures only one provider active per process, in order
+        /// to prevent multiple concurrent interactive login dialogues.
+        /// Unnamed semaphores are local to the current process.
+        /// </summary>
         private readonly Semaphore _providerSemaphore = new Semaphore(1, 1);
 
         private Action<string> ErrorDelegate { get; }
@@ -99,16 +104,12 @@ namespace NuGet.Credentials
 
                 try
                 {
-                    // There is a potential optimization here were we take a semaphore per provider instead of
-                    // one that blocks all providers.  We had some conserns about doing this.  If multiple
-                    // providers are called at the same time it becomes much more complex for them to handle
-                    // access to shared resources.  The primary consern is UI (e.g. two providers showing
-                    // modal dialogs at the same time) however there is also the potential that providers
-                    // would share reading/writing a config file or other system resource.  Additionally
-                    // providers are only consulted if the credential cache fails so after initial calls
-                    // this should not be common.  Optimizing here could make provider authoring more complex
-                    // so unles we determin there is a necessary performance improvemnt that can
-                    // be gained with this optimization we have opted to take a larger lock.
+                    // This local semaphore ensures one provider active per process.
+                    // We can consider other ways to allow more concurrency between providers, but need to
+                    // ensure that only one interactive dialogue is ever presented at a time, and that
+                    // providers are not writing shared resources.
+                    // Since this service is called only when cached credentials are not available to the caller,
+                    // such an optimization is likely not necessary.
                     _providerSemaphore.WaitOne();
 
                     if (!TryFromCredentialCache(uri, isProxy, isRetry, provider, out response))
