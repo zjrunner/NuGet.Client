@@ -55,7 +55,7 @@ namespace NuGet.Credentials
         {
             if(isProxyRequest)
             {
-                return null;
+                return Task.FromResult((ICredentials)null);
             }
 
             PluginCredentialResponse response = null;
@@ -102,7 +102,7 @@ namespace NuGet.Credentials
         /// </summary>
         internal int TimeoutSeconds { get; }
 
-        private PluginCredentialResponse Execute(PluginCredentialRequest request,
+        public virtual PluginCredentialResponse Execute(PluginCredentialRequest request,
             CancellationToken cancellationToken)
         { 
             string requestString = string.Concat(JsonConvert.SerializeObject(request), Environment.NewLine);

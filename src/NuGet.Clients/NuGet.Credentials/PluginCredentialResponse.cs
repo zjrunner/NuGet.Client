@@ -8,7 +8,7 @@ namespace NuGet.Credentials
     /// <summary>
     /// Response data returned from plugin credential provider applications
     /// </summary>
-    class PluginCredentialResponse
+    public class PluginCredentialResponse
     {
         public string Username { get; set; }
 
