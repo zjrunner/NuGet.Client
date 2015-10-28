@@ -7,6 +7,9 @@ using NuGet.Frameworks;
 using NuGet.Packaging;
 using NuGet.ProjectModel;
 using NuGet.Repositories;
+using NuGet.DependencyResolver;
+using NuGet.LibraryModel;
+using System.Diagnostics;
 
 namespace NuGet.Commands
 {
@@ -138,7 +141,6 @@ namespace NuGet.Commands
                 }
             }
 
-            var nativeCriteria = targetGraph.Conventions.Criteria.ForRuntime(targetGraph.RuntimeIdentifier);
             var managedCriteria = targetGraph.Conventions.Criteria.ForFrameworkAndRuntime(framework, targetGraph.RuntimeIdentifier);
 
             var compileGroup = contentItems.FindBestItemGroup(managedCriteria, targetGraph.Conventions.Patterns.CompileAssemblies, targetGraph.Conventions.Patterns.RuntimeAssemblies);
@@ -159,6 +161,8 @@ namespace NuGet.Commands
             {
                 lockFileLib.ResourceAssemblies = resourceGroup.Items.Select(ToResourceLockFileItem).ToList();
             }
+
+            var nativeCriteria = targetGraph.Conventions.Criteria.ForRuntime(targetGraph.RuntimeIdentifier);
 
             var nativeGroup = contentItems.FindBestItemGroup(nativeCriteria, targetGraph.Conventions.Patterns.NativeLibraries);
             if (nativeGroup != null)
@@ -202,7 +206,58 @@ namespace NuGet.Commands
                 lockFileLib.CompileTimeAssemblies = lockFileLib.CompileTimeAssemblies.Where(p => !p.Path.StartsWith("lib/") || referenceFilter.Contains(Path.GetFileName(p.Path))).ToList();
             }
 
+            // Exclude items
+            var flattenedTypes = FlattenDependencyTypes(targetGraph.Graphs, LibraryIncludeType.All);
+            LibraryIncludeType dependencyType = flattenedTypes[library.Name];
+
+            var excludeRuntime = !dependencyType.Contains(LibraryIncludeTypeFlag.Runtime);
+
+            if (excludeRuntime)
+            {
+                ClearIfExists(lockFileLib.RuntimeAssemblies);
+                lockFileLib.FrameworkAssemblies.Clear();
+                lockFileLib.ResourceAssemblies.Clear();
+            }
+
+            if (!dependencyType.Contains(LibraryIncludeTypeFlag.Compile))
+            {
+                ClearIfExists(lockFileLib.CompileTimeAssemblies);
+            }
+
+            if (!dependencyType.Contains(LibraryIncludeTypeFlag.ContentFiles))
+            {
+                ClearIfExists(lockFileLib.ContentFiles);
+            }
+
+            if (!dependencyType.Contains(LibraryIncludeTypeFlag.Native))
+            {
+                ClearIfExists(lockFileLib.NativeLibraries);
+            }
+
+            if (!dependencyType.Contains(LibraryIncludeTypeFlag.Dependencies))
+            {
+                lockFileLib.Dependencies.Clear();
+            }
+
             return lockFileLib;
+        }
+
+        private static void ClearIfExists(IList<LockFileItem> group)
+        {
+            if (group?.Any() == true)
+            {
+                var firstItem = group.OrderBy(item => item.Path.Length)
+                    .ThenBy(item => item.Path, StringComparer.OrdinalIgnoreCase)
+                    .First();
+
+                var fileName = Path.GetFileName(firstItem.Path);
+
+                var emptyDir = firstItem.Path.Substring(0, firstItem.Path.Length - fileName.Length) + "_._";
+
+                group.Clear();
+
+                group.Add(new LockFileItem(emptyDir));
+            }
         }
 
         private static bool HasItems(ContentItemGroup compileGroup)
@@ -221,5 +276,57 @@ namespace NuGet.Commands
             };
         }
 
+        private static Dictionary<string, LibraryIncludeType> FlattenDependencyTypes(
+            IEnumerable<GraphNode<RemoteResolveResult>> nodes,
+            LibraryIncludeType dependencyType)
+        {
+            var result = new Dictionary<string, LibraryIncludeType>(StringComparer.OrdinalIgnoreCase);
+            LibraryIncludeType currentTypes;
+
+            foreach (var node in nodes)
+            {
+                // Add in the current nodes to the result
+                result.Add(node.Key.Name, dependencyType);
+
+                foreach (var child in node.InnerNodes)
+                {
+                    var childType = GetDependencyType(node, child);
+
+                    // Intersect on the way down
+                    var typeIntersection = dependencyType.Intersect(childType);
+
+                    var nodeList = new GraphNode<RemoteResolveResult>[] { child };
+
+                    var childResult = FlattenDependencyTypes(nodeList, typeIntersection);
+
+                    foreach (var pair in childResult)
+                    {
+                        if (result.TryGetValue(pair.Key, out currentTypes))
+                        {
+                            // Combine results on the way up
+                            result[pair.Key] = currentTypes.Combine(pair.Value);
+                        }
+                        else
+                        {
+                            result.Add(pair.Key, pair.Value);
+                        }
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        private static LibraryIncludeType GetDependencyType(
+            GraphNode<RemoteResolveResult> parent,
+            GraphNode<RemoteResolveResult> child)
+        {
+            var match = parent.Item.Data.Dependencies.FirstOrDefault(dependency =>
+                dependency.Name.Equals(child.Key.Name, StringComparison.OrdinalIgnoreCase));
+
+            Debug.Assert(match != null, "The graph contains a dependency that the node does not list");
+
+            return match?.IncludeType ?? LibraryIncludeType.Default;
+        }
     }
 }

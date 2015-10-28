@@ -4,6 +4,7 @@
 using System;
 using System.Globalization;
 using NuGet.Versioning;
+using System.Collections.Generic;
 
 namespace NuGet.Packaging.Core
 {
@@ -12,7 +13,6 @@ namespace NuGet.Packaging.Core
     /// </summary>
     public class PackageDependency : IEquatable<PackageDependency>
     {
-        private readonly string _id;
         private VersionRange _versionRange;
 
         public PackageDependency(string id)
@@ -21,23 +21,41 @@ namespace NuGet.Packaging.Core
         }
 
         public PackageDependency(string id, VersionRange versionRange)
+            : this(id, versionRange, new List<string>(), new List<string>())
+        {
+        }
+
+        public PackageDependency(
+            string id,
+            VersionRange versionRange,
+            IReadOnlyList<string> includeFlags,
+            IReadOnlyList<string> excludeFlags)
         {
             if (String.IsNullOrEmpty(id))
             {
-                throw new ArgumentException("id");
+                throw new ArgumentException(nameof(id));
             }
 
-            _id = id;
+            if (includeFlags == null)
+            {
+                throw new ArgumentNullException(nameof(includeFlags));
+            }
+
+            if (excludeFlags == null)
+            {
+                throw new ArgumentNullException(nameof(excludeFlags));
+            }
+
+            Id = id;
             _versionRange = versionRange ?? VersionRange.All;
+            IncludeFlags = includeFlags;
+            ExcludeFlags = excludeFlags;
         }
 
         /// <summary>
         /// Dependency package Id
         /// </summary>
-        public string Id
-        {
-            get { return _id; }
-        }
+        public string Id { get; }
 
         /// <summary>
         /// Range of versions allowed for the depenency
@@ -46,6 +64,16 @@ namespace NuGet.Packaging.Core
         {
             get { return _versionRange; }
         }
+
+        /// <summary>
+        /// Types to include from the dependency package.
+        /// </summary>
+        public IReadOnlyList<string> IncludeFlags { get; }
+
+        /// <summary>
+        /// Types to exclude from the dependency package.
+        /// </summary>
+        public IReadOnlyList<string> ExcludeFlags { get; }
 
         /// <summary>
         /// Sets the version range to also include prerelease versions

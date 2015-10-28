@@ -179,6 +179,9 @@ namespace NuGet.ProjectModel
                     var dependencyValue = dependency.Value;
                     var dependencyTypeValue = LibraryDependencyType.Default;
 
+                    var dependencyIncludeFlagsValue = LibraryIncludeType.All;
+                    var dependencyExcludeFlagsValue = LibraryIncludeType.Parse(Enumerable.Empty<string>());
+
                     string dependencyVersionValue = null;
                     var dependencyVersionToken = dependencyValue;
 
@@ -203,6 +206,16 @@ namespace NuGet.ProjectModel
                         {
                             dependencyTypeValue = LibraryDependencyType.Parse(strings);
                         }
+
+                        if (TryGetStringEnumerable(dependencyValue["includeFlags"], out strings))
+                        {
+                            dependencyIncludeFlagsValue = LibraryIncludeType.Parse(strings);
+                        }
+
+                        if (TryGetStringEnumerable(dependencyValue["excludeFlags"], out strings))
+                        {
+                            dependencyExcludeFlagsValue = LibraryIncludeType.Parse(strings);
+                        }
                     }
 
                     VersionRange dependencyVersionRange = null;
@@ -222,6 +235,10 @@ namespace NuGet.ProjectModel
                         }
                     }
 
+                    var includeFlags = dependencyIncludeFlagsValue.Combine(
+                        Enumerable.Empty<LibraryIncludeTypeFlag>(),
+                        dependencyExcludeFlagsValue.Keywords);
+
                     results.Add(new LibraryDependency()
                     {
                         LibraryRange = new LibraryRange()
@@ -230,7 +247,8 @@ namespace NuGet.ProjectModel
                             TypeConstraint = isGacOrFrameworkReference ? LibraryTypes.Reference : null,
                             VersionRange = dependencyVersionRange,
                         },
-                        Type = dependencyTypeValue
+                        Type = dependencyTypeValue,
+                        IncludeType = includeFlags
                     });
                 }
             }
