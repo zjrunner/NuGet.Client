@@ -102,20 +102,47 @@ namespace NuGet.Credentials.Test
         [Fact]
         public void GetCredentials_UsesDefaultProviders()
         {
+            var origDefaultProvider = CredentialService.DefaultProviders;
             try
             {
-                var providers = new[] {_mockProvider.Object};
+                var providers = new Lazy<IEnumerable<ICredentialProvider>>(() => new[] {_mockProvider.Object});
                 CredentialService.DefaultProviders = providers;
 
                 var service = new CredentialService(errorDelegate: TestableErrorWriter, nonInteractive: false,
                     useCache: true);
 
                 Assert.Equal(1, service.Providers.Count());
-                Assert.Same(providers[0], service.Providers.First());
+                Assert.Same(_mockProvider.Object, service.Providers.First());
             }
             finally
             {
-                CredentialService.DefaultProviders = null;
+                CredentialService.DefaultProviders = origDefaultProvider;
+            }
+        }
+
+        [Fact]
+        public void GetCredentials_ErrorOnProviderLoadFailsOnAccessNotInitialization()
+        {
+            var origDefaultProvider = CredentialService.DefaultProviders;
+            var exceptionText = "Exception for test";
+            try
+            {
+                var providers =
+                    new Lazy<IEnumerable<ICredentialProvider>>(
+                        () => { throw new PluginException(exceptionText); });
+                CredentialService.DefaultProviders = providers;
+
+                var service = new CredentialService(errorDelegate: TestableErrorWriter, nonInteractive: false,
+                    useCache: true);
+
+                var result = Record.Exception(() => { var tmp = service.Providers; });
+
+                Assert.IsAssignableFrom(typeof (PluginException), result);
+                Assert.Contains( exceptionText, result.Message);
+            }
+            finally
+            {
+                CredentialService.DefaultProviders = origDefaultProvider;
             }
         }
 

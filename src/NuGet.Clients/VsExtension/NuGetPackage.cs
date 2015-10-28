@@ -335,13 +335,14 @@ namespace NuGetVSExtension
             PackageSourceProvider packageSourceProvider = new PackageSourceProvider(
                 new SettingsToLegacySettings(Settings));
 
-            CredentialService.DefaultProviders = new List<NuGet.Credentials.ICredentialProvider>
-            {
-                new CredentialProviderAdapter(new SettingsCredentialProvider(
-                    NuGet.NullCredentialProvider.Instance, packageSourceProvider)),
-                new VisualStudioAccountProvider(),
-                new VisualStudioCredentialProvider(webProxy)
-            };
+            CredentialService.DefaultProviders = new Lazy<IEnumerable<NuGet.Credentials.ICredentialProvider>>(
+                () => new List<NuGet.Credentials.ICredentialProvider>
+                    {
+                        new CredentialProviderAdapter(new SettingsCredentialProvider(
+                            NuGet.NullCredentialProvider.Instance, packageSourceProvider)),
+                        new VisualStudioAccountProvider(),
+                        new VisualStudioCredentialProvider(webProxy)
+                    });
 
             var credentialService = new CredentialService(
                 (s) => this._outputConsoleLogger.OutputConsole.WriteLine(s),

@@ -16,8 +16,10 @@ namespace NuGet.Credentials
     /// </summary>
     public class CredentialService : ICredentialService
     {
-        private static IEnumerable<ICredentialProvider> _defaultProviders
-            = new List<ICredentialProvider>();
+        private static Lazy<IEnumerable<ICredentialProvider>> _defaultProviders
+            = new Lazy<IEnumerable<ICredentialProvider>>(() => new List<ICredentialProvider>());
+
+        private IEnumerable<ICredentialProvider> _providerList = null;
 
         private readonly ConcurrentDictionary<string, bool> _retryCache
             = new ConcurrentDictionary<string, bool>();
@@ -54,26 +56,30 @@ namespace NuGet.Credentials
             ErrorDelegate = errorDelegate;
             _nonInteractive = nonInteractive;
             _useCache = useCache;
-            Providers = new List<ICredentialProvider>(_defaultProviders);
         }
 
         /// <summary>
         /// New CredentialService objects will be populated with these default
         /// configured providers.
         /// </summary>
-        public static IEnumerable<ICredentialProvider> DefaultProviders
+        public static Lazy<IEnumerable<ICredentialProvider>> DefaultProviders
         {
             set
             {
-                _defaultProviders = value ?? new List<ICredentialProvider>(); ;
+                _defaultProviders = value;
             }
+            internal get { return _defaultProviders;}
         }
 
         /// <summary>
         /// Gets the currently configured providers.
         /// Internal set is provided for use by unit tests.
         /// </summary>
-        public IEnumerable<ICredentialProvider> Providers { get; internal set; }
+        public IEnumerable<ICredentialProvider> Providers
+        {
+            get { return _providerList ?? _defaultProviders.Value; }
+            internal set { _providerList =  value; }
+        } 
 
         /// <summary>
         /// Provides credentials for http requests.
