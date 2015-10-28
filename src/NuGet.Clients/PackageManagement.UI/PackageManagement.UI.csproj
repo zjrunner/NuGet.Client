@@ -113,6 +113,7 @@
     <Compile Include="FilterItem.cs" />
     <Compile Include="ILoader.cs" />
     <Compile Include="InfiniteScrollListItemStyleSelector.cs" />
+    <Compile Include="InstalledTabLoader.cs" />
     <Compile Include="LoadingStatus.cs" />
     <Compile Include="LoadingStatusIndicator.cs" />
     <Compile Include="LoadResult.cs" />
