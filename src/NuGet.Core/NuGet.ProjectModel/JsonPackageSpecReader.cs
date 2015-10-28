@@ -207,12 +207,12 @@ namespace NuGet.ProjectModel
                             dependencyTypeValue = LibraryDependencyType.Parse(strings);
                         }
 
-                        if (TryGetStringEnumerable(dependencyValue["includeFlags"], out strings))
+                        if (TryGetStringEnumerable(dependencyValue["include"], out strings))
                         {
                             dependencyIncludeFlagsValue = LibraryIncludeType.Parse(strings);
                         }
 
-                        if (TryGetStringEnumerable(dependencyValue["excludeFlags"], out strings))
+                        if (TryGetStringEnumerable(dependencyValue["exclude"], out strings))
                         {
                             dependencyExcludeFlagsValue = LibraryIncludeType.Parse(strings);
                         }

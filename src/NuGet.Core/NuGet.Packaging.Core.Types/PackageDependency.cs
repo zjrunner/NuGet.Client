@@ -1,10 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using System.Globalization;
 using NuGet.Versioning;
+using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace NuGet.Packaging.Core
 {
@@ -28,28 +28,28 @@ namespace NuGet.Packaging.Core
         public PackageDependency(
             string id,
             VersionRange versionRange,
-            IReadOnlyList<string> includeFlags,
-            IReadOnlyList<string> excludeFlags)
+            IReadOnlyList<string> include,
+            IReadOnlyList<string> exclude)
         {
             if (String.IsNullOrEmpty(id))
             {
                 throw new ArgumentException(nameof(id));
             }
 
-            if (includeFlags == null)
+            if (include == null)
             {
-                throw new ArgumentNullException(nameof(includeFlags));
+                throw new ArgumentNullException(nameof(include));
             }
 
-            if (excludeFlags == null)
+            if (exclude == null)
             {
-                throw new ArgumentNullException(nameof(excludeFlags));
+                throw new ArgumentNullException(nameof(exclude));
             }
 
             Id = id;
             _versionRange = versionRange ?? VersionRange.All;
-            IncludeFlags = includeFlags;
-            ExcludeFlags = excludeFlags;
+            Include = include;
+            Exclude = exclude;
         }
 
         /// <summary>
@@ -68,12 +68,12 @@ namespace NuGet.Packaging.Core
         /// <summary>
         /// Types to include from the dependency package.
         /// </summary>
-        public IReadOnlyList<string> IncludeFlags { get; }
+        public IReadOnlyList<string> Include { get; }
 
         /// <summary>
         /// Types to exclude from the dependency package.
         /// </summary>
-        public IReadOnlyList<string> ExcludeFlags { get; }
+        public IReadOnlyList<string> Exclude { get; }
 
         /// <summary>
         /// Sets the version range to also include prerelease versions

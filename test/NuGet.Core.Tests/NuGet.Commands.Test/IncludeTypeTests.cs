@@ -61,7 +61,7 @@ namespace NuGet.Commands.Test
             configJson.Add("dependencies", dependencies);
             dependencies.Add("packageA", packageA);
             packageA.Add("version", "1.0.0");
-            packageA.Add("includeFlags", "Runtime");
+            packageA.Add("include", "Runtime");
 
             // Act
             var spec = JsonPackageSpecReader.GetPackageSpec(configJson.ToString(), "TestProject", "project.json");
@@ -90,7 +90,7 @@ namespace NuGet.Commands.Test
             configJson.Add("dependencies", dependencies);
             dependencies.Add("packageA", packageA);
             packageA.Add("version", "1.0.0");
-            packageA.Add("includeFlags", "contentFiles");
+            packageA.Add("include", "contentFiles");
 
             // Act
             var spec = JsonPackageSpecReader.GetPackageSpec(configJson.ToString(), "TestProject", "project.json");
@@ -118,7 +118,7 @@ namespace NuGet.Commands.Test
                 ""dependencies"": {
                     ""packageA"": {
                         ""version"": ""1.0.0"",
-                        ""includeFlags"": ""Runtime""
+                        ""include"": ""Runtime""
                     }
                 },
                 ""frameworks"": {
@@ -160,7 +160,7 @@ namespace NuGet.Commands.Test
                 ""dependencies"": {
                     ""packageA"": {
                         ""version"": ""1.0.0"",
-                        ""includeFlags"": ""All""
+                        ""include"": ""All""
                     }
                 },
                 ""frameworks"": {

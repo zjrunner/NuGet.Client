@@ -111,12 +111,22 @@ namespace NuGet.LibraryModel
 
         internal static LibraryIncludeTypeKeyword Parse(string keyword)
         {
+            if (string.IsNullOrEmpty(keyword))
+            {
+                throw new ArgumentException(keyword);
+            }
+
             LibraryIncludeTypeKeyword value;
             if (_keywords.TryGetValue(keyword, out value))
             {
                 return value;
             }
-            throw new ArgumentException(string.Format("Unknown dependency include flag '{0}'.", keyword));
+
+            return new LibraryIncludeTypeKeyword(keyword, new LibraryIncludeTypeFlag[]
+            {
+                LibraryIncludeTypeFlag.Declare(keyword)
+            },
+            new LibraryIncludeTypeFlag[0]);
         }
     }
 }

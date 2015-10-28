@@ -36,8 +36,8 @@ namespace NuGet.Packaging
         private const string BuildAction = "buildAction";
         private const string Flatten = "flatten";
         private const string CopyToOutput = "copyToOutput";
-        private const string IncludeFlags = "includeFlags";
-        private const string ExcludeFlags = "excludeFlags";
+        private const string IncludeFlags = "include";
+        private const string ExcludeFlags = "exclude";
         private static readonly char[] CommaArray = new char[] { ',' };
         private readonly IFrameworkNameProvider _frameworkProvider;
 

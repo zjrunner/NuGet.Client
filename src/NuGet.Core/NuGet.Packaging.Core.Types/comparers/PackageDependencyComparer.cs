@@ -56,14 +56,14 @@ namespace NuGet.Packaging.Core
 
             if (result)
             {
-                result = x.IncludeFlags.OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
-                    .SequenceEqual(y.IncludeFlags.OrderBy(s => s, StringComparer.OrdinalIgnoreCase));
+                result = x.Include.OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
+                    .SequenceEqual(y.Include.OrderBy(s => s, StringComparer.OrdinalIgnoreCase));
             }
 
             if (result)
             {
-                result = x.ExcludeFlags.OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
-                    .SequenceEqual(y.ExcludeFlags.OrderBy(s => s, StringComparer.OrdinalIgnoreCase));
+                result = x.Exclude.OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
+                    .SequenceEqual(y.Exclude.OrderBy(s => s, StringComparer.OrdinalIgnoreCase));
             }
 
             return result;
@@ -87,7 +87,7 @@ namespace NuGet.Packaging.Core
                 combiner.AddObject(_versionRangeComparer.GetHashCode(obj.VersionRange));
             }
 
-            foreach (var include in obj.IncludeFlags.OrderBy(s => s, StringComparer.OrdinalIgnoreCase))
+            foreach (var include in obj.Include.OrderBy(s => s, StringComparer.OrdinalIgnoreCase))
             {
                 combiner.AddObject(include.ToLowerInvariant());
             }
@@ -95,7 +95,7 @@ namespace NuGet.Packaging.Core
             // separate the lists
             combiner.AddInt32(8);
 
-            foreach (var exclude in obj.ExcludeFlags.OrderBy(s => s, StringComparer.OrdinalIgnoreCase))
+            foreach (var exclude in obj.Exclude.OrderBy(s => s, StringComparer.OrdinalIgnoreCase))
             {
                 combiner.AddObject(exclude.ToLowerInvariant());
             }
