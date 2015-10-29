@@ -9,15 +9,379 @@ using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using NuGet.Configuration;
 using NuGet.Frameworks;
+using NuGet.LibraryModel;
 using NuGet.ProjectModel;
 using NuGet.Test.Utility;
 using Xunit;
-using NuGet.LibraryModel;
 
 namespace NuGet.Commands.Test
 {
     public class IncludeTypeTests : IDisposable
     {
+        [Fact]
+        public async Task IncludeType_ProjectToProjectNoTransitiveContent()
+        {
+            // Arrange
+            var logger = new TestLogger();
+            var framework = "net46";
+
+            var configJson2 = JObject.Parse(@"{
+                ""dependencies"": {
+                    ""packageX"": ""1.0.0""
+                },
+                ""frameworks"": {
+                ""net46"": {}
+                }
+            }");
+
+            var configJson1 = JObject.Parse(@"{
+                ""dependencies"": {
+                },
+                ""frameworks"": {
+                ""net46"": {}
+                }
+            }");
+
+            // Arrange
+            var workingDir = TestFileSystemUtility.CreateRandomTestFolder();
+            _testFolders.Add(workingDir);
+
+            var repository = Path.Combine(workingDir, "repository");
+            Directory.CreateDirectory(repository);
+            var projectDir = Path.Combine(workingDir, "project");
+            Directory.CreateDirectory(projectDir);
+            var packagesDir = Path.Combine(workingDir, "packages");
+            Directory.CreateDirectory(packagesDir);
+            var testProject1Dir = Path.Combine(projectDir, "TestProject1");
+            Directory.CreateDirectory(testProject1Dir);
+            var testProject2Dir = Path.Combine(projectDir, "TestProject2");
+            Directory.CreateDirectory(testProject2Dir);
+
+            // X -> Y -> B
+            CreateFullPackage(repository, "packageX", "1.0.0", "packageY", "1.0.0");
+            CreateFullPackage(repository, "packageY", "1.0.0", "packageB", "1.0.0");
+            CreateDependencyB(repository);
+
+            var sources = new List<PackageSource>();
+            sources.Add(new PackageSource(repository));
+
+            var specPath1 = Path.Combine(testProject1Dir, "project.json");
+            var spec1 = JsonPackageSpecReader.GetPackageSpec(configJson1.ToString(), "TestProject1", specPath1);
+            using (var writer = new StreamWriter(File.OpenWrite(specPath1)))
+            {
+                writer.WriteLine(configJson1.ToString());
+            }
+
+            var specPath2 = Path.Combine(testProject2Dir, "project.json");
+            var spec2 = JsonPackageSpecReader.GetPackageSpec(configJson2.ToString(), "TestProject2", specPath2);
+            using (var writer = new StreamWriter(File.OpenWrite(specPath2)))
+            {
+                writer.WriteLine(configJson2.ToString());
+            }
+
+            var request = new RestoreRequest(spec1, sources, packagesDir);
+            request.LockFilePath = Path.Combine(testProject1Dir, "project.lock.json");
+            request.ExternalProjects = new List<ExternalProjectReference>()
+            {
+                new ExternalProjectReference("TestProject2", specPath2, Enumerable.Empty<string>())
+            };
+
+            var command = new RestoreCommand(logger, request);
+
+            // Act
+            var result = await command.ExecuteAsync();
+            result.Commit(logger);
+
+            var target = result.LockFile.GetTarget(NuGetFramework.Parse(framework), null);
+
+            // Assert
+            Assert.Equal(0, result.CompatibilityCheckResults.Sum(checkResult => checkResult.Issues.Count));
+            Assert.Equal(0, logger.Errors);
+            Assert.Equal(0, logger.Warnings);
+            Assert.Equal(3, target.Libraries.Count);
+            Assert.Equal(3, result.LockFile.Libraries.Count);
+            Assert.True(target.Libraries.All(lib => IsEmptyFolder(lib.ContentFiles)));
+        }
+
+        [Fact]
+        public async Task IncludeType_ExcludedAndTransitivePackage()
+        {
+            // Restore Project1
+            // Project2 has only build dependencies
+            // Project1 -> packageB, Project2 -(suppress: all)-> packageX -> packageY -> packageB
+
+            // Arrange
+            var logger = new TestLogger();
+            var framework = "net46";
+
+            var configJson2 = JObject.Parse(@"{
+                ""dependencies"": {
+                    ""packageX"": {
+                        ""version"": ""1.0.0"",
+                        ""parentExclude"": ""all""
+                    },
+                    ""packageB"": ""1.0.0""
+                },
+                ""frameworks"": {
+                ""net46"": {}
+                }
+            }");
+
+            var configJson1 = JObject.Parse(@"{
+                ""dependencies"": {
+                },
+                ""frameworks"": {
+                ""net46"": {}
+                }
+            }");
+
+            // Arrange
+            var workingDir = TestFileSystemUtility.CreateRandomTestFolder();
+            _testFolders.Add(workingDir);
+
+            var repository = Path.Combine(workingDir, "repository");
+            Directory.CreateDirectory(repository);
+            var projectDir = Path.Combine(workingDir, "project");
+            Directory.CreateDirectory(projectDir);
+            var packagesDir = Path.Combine(workingDir, "packages");
+            Directory.CreateDirectory(packagesDir);
+            var testProject1Dir = Path.Combine(projectDir, "TestProject1");
+            Directory.CreateDirectory(testProject1Dir);
+            var testProject2Dir = Path.Combine(projectDir, "TestProject2");
+            Directory.CreateDirectory(testProject2Dir);
+
+            // X -> Y -> B
+            CreateFullPackage(repository, "packageX", "1.0.0", "packageY", "1.0.0");
+            CreateFullPackage(repository, "packageY", "1.0.0", "packageB", "1.0.0");
+            CreateDependencyB(repository);
+
+            var sources = new List<PackageSource>();
+            sources.Add(new PackageSource(repository));
+
+            var specPath1 = Path.Combine(testProject1Dir, "project.json");
+            var spec1 = JsonPackageSpecReader.GetPackageSpec(configJson1.ToString(), "TestProject1", specPath1);
+            using (var writer = new StreamWriter(File.OpenWrite(specPath1)))
+            {
+                writer.WriteLine(configJson1.ToString());
+            }
+
+            var specPath2 = Path.Combine(testProject2Dir, "project.json");
+            var spec2 = JsonPackageSpecReader.GetPackageSpec(configJson2.ToString(), "TestProject2", specPath2);
+            using (var writer = new StreamWriter(File.OpenWrite(specPath2)))
+            {
+                writer.WriteLine(configJson2.ToString());
+            }
+
+            var request = new RestoreRequest(spec1, sources, packagesDir);
+            request.LockFilePath = Path.Combine(testProject1Dir, "project.lock.json");
+            request.ExternalProjects = new List<ExternalProjectReference>()
+            {
+                new ExternalProjectReference("TestProject2", specPath2, Enumerable.Empty<string>())
+            };
+
+            var command = new RestoreCommand(logger, request);
+
+            // Act
+            var result = await command.ExecuteAsync();
+            result.Commit(logger);
+
+            var target = result.LockFile.GetTarget(NuGetFramework.Parse(framework), null);
+
+            // Assert
+            Assert.Equal(0, result.CompatibilityCheckResults.Sum(checkResult => checkResult.Issues.Count));
+            Assert.Equal(0, logger.Errors);
+            Assert.Equal(0, logger.Warnings);
+            Assert.Equal(1, target.Libraries.Count);
+            Assert.Equal(1, result.LockFile.Libraries.Count);
+            Assert.Equal("packageB", target.Libraries.Single().Name);
+            Assert.Equal(1, target.Libraries.Single().CompileTimeAssemblies.Count);
+        }
+
+        [Fact]
+        public async Task IncludeType_ProjectToProjectReferenceWithBuildReferenceAndTopLevel()
+        {
+            // Restore Project1
+            // Project2 has only build dependencies
+            // Project1 -> packageB, Project2 -(suppress: all)-> packageX -> packageY -> packageB
+
+            // Arrange
+            var logger = new TestLogger();
+            var framework = "net46";
+
+            var configJson2 = JObject.Parse(@"{
+                ""dependencies"": {
+                    ""packageX"": {
+                        ""version"": ""1.0.0"",
+                        ""parentExclude"": ""all""
+                    }
+                },
+                ""frameworks"": {
+                ""net46"": {}
+                }
+            }");
+
+            var configJson1 = JObject.Parse(@"{
+                ""dependencies"": {
+                    ""packageB"": ""1.0.0""
+                },
+                ""frameworks"": {
+                ""net46"": {}
+                }
+            }");
+
+            // Arrange
+            var workingDir = TestFileSystemUtility.CreateRandomTestFolder();
+            _testFolders.Add(workingDir);
+
+            var repository = Path.Combine(workingDir, "repository");
+            Directory.CreateDirectory(repository);
+            var projectDir = Path.Combine(workingDir, "project");
+            Directory.CreateDirectory(projectDir);
+            var packagesDir = Path.Combine(workingDir, "packages");
+            Directory.CreateDirectory(packagesDir);
+            var testProject1Dir = Path.Combine(projectDir, "TestProject1");
+            Directory.CreateDirectory(testProject1Dir);
+            var testProject2Dir = Path.Combine(projectDir, "TestProject2");
+            Directory.CreateDirectory(testProject2Dir);
+
+            // X -> Y -> B
+            CreateFullPackage(repository, "packageX", "1.0.0", "packageY", "1.0.0");
+            CreateFullPackage(repository, "packageY", "1.0.0", "packageB", "1.0.0");
+            CreateDependencyB(repository);
+
+            var sources = new List<PackageSource>();
+            sources.Add(new PackageSource(repository));
+
+            var specPath1 = Path.Combine(testProject1Dir, "project.json");
+            var spec1 = JsonPackageSpecReader.GetPackageSpec(configJson1.ToString(), "TestProject1", specPath1);
+            using (var writer = new StreamWriter(File.OpenWrite(specPath1)))
+            {
+                writer.WriteLine(configJson1.ToString());
+            }
+
+            var specPath2 = Path.Combine(testProject2Dir, "project.json");
+            var spec2 = JsonPackageSpecReader.GetPackageSpec(configJson2.ToString(), "TestProject2", specPath2);
+            using (var writer = new StreamWriter(File.OpenWrite(specPath2)))
+            {
+                writer.WriteLine(configJson2.ToString());
+            }
+
+            var request = new RestoreRequest(spec1, sources, packagesDir);
+            request.LockFilePath = Path.Combine(testProject1Dir, "project.lock.json");
+            request.ExternalProjects = new List<ExternalProjectReference>()
+            {
+                new ExternalProjectReference("TestProject2", specPath2, Enumerable.Empty<string>())
+            };
+
+            var command = new RestoreCommand(logger, request);
+
+            // Act
+            var result = await command.ExecuteAsync();
+            result.Commit(logger);
+
+            var target = result.LockFile.GetTarget(NuGetFramework.Parse(framework), null);
+
+            // Assert
+            Assert.Equal(0, result.CompatibilityCheckResults.Sum(checkResult => checkResult.Issues.Count));
+            Assert.Equal(0, logger.Errors);
+            Assert.Equal(0, logger.Warnings);
+            Assert.Equal(1, target.Libraries.Count);
+            Assert.Equal(1, result.LockFile.Libraries.Count);
+            Assert.Equal("packageB", target.Libraries.Single().Name);
+            Assert.Equal(1, target.Libraries.Single().CompileTimeAssemblies.Count);
+        }
+
+        [Fact]
+        public async Task IncludeType_ProjectToProjectReferenceWithBuildReference()
+        {
+            // Restore Project1
+            // Project2 has only build dependencies
+            // Project1 -> Project2 -(suppress: all)-> packageX -> packageY -> packageB
+
+            // Arrange
+            var logger = new TestLogger();
+            var framework = "net46";
+
+            var configJson2 = JObject.Parse(@"{
+                ""dependencies"": {
+                    ""packageX"": {
+                        ""version"": ""1.0.0"",
+                        ""parentExclude"": ""all""
+                    }
+                },
+                ""frameworks"": {
+                ""net46"": {}
+                }
+            }");
+
+            var configJson1 = JObject.Parse(@"{
+                ""dependencies"": {
+                },
+                ""frameworks"": {
+                ""net46"": {}
+                }
+            }");
+
+            // Arrange
+            var workingDir = TestFileSystemUtility.CreateRandomTestFolder();
+            _testFolders.Add(workingDir);
+
+            var repository = Path.Combine(workingDir, "repository");
+            Directory.CreateDirectory(repository);
+            var projectDir = Path.Combine(workingDir, "project");
+            Directory.CreateDirectory(projectDir);
+            var packagesDir = Path.Combine(workingDir, "packages");
+            Directory.CreateDirectory(packagesDir);
+            var testProject1Dir = Path.Combine(projectDir, "TestProject1");
+            Directory.CreateDirectory(testProject1Dir);
+            var testProject2Dir = Path.Combine(projectDir, "TestProject2");
+            Directory.CreateDirectory(testProject2Dir);
+
+            // X -> Y -> B
+            CreateFullPackage(repository, "packageX", "1.0.0", "packageY", "1.0.0");
+            CreateFullPackage(repository, "packageY", "1.0.0", "packageB", "1.0.0");
+            CreateDependencyB(repository);
+
+            var sources = new List<PackageSource>();
+            sources.Add(new PackageSource(repository));
+
+            var specPath1 = Path.Combine(testProject1Dir, "project.json");
+            var spec1 = JsonPackageSpecReader.GetPackageSpec(configJson1.ToString(), "TestProject1", specPath1);
+            using (var writer = new StreamWriter(File.OpenWrite(specPath1)))
+            {
+                writer.WriteLine(configJson1.ToString());
+            }
+
+            var specPath2 = Path.Combine(testProject2Dir, "project.json");
+            var spec2 = JsonPackageSpecReader.GetPackageSpec(configJson2.ToString(), "TestProject2", specPath2);
+            using (var writer = new StreamWriter(File.OpenWrite(specPath2)))
+            {
+                writer.WriteLine(configJson2.ToString());
+            }
+
+            var request = new RestoreRequest(spec1, sources, packagesDir);
+            request.LockFilePath = Path.Combine(testProject1Dir, "project.lock.json");
+            request.ExternalProjects = new List<ExternalProjectReference>()
+            {
+                new ExternalProjectReference("TestProject2", specPath2, Enumerable.Empty<string>())
+            };
+
+            var command = new RestoreCommand(logger, request);
+
+            // Act
+            var result = await command.ExecuteAsync();
+            result.Commit(logger);
+
+            var target = result.LockFile.GetTarget(NuGetFramework.Parse(framework), null);
+
+            // Assert
+            Assert.Equal(0, result.CompatibilityCheckResults.Sum(checkResult => checkResult.Issues.Count));
+            Assert.Equal(0, logger.Errors);
+            Assert.Equal(0, logger.Warnings);
+            Assert.Equal(0, target.Libraries.Count);
+            Assert.Equal(0, result.LockFile.Libraries.Count);
+        }
+
         [Fact]
         public void IncludeType_ProjectJsonDefaultFlags()
         {
@@ -269,10 +633,19 @@ namespace NuGet.Commands.Test
 
             return result;
         }
-
         private static FileInfo CreateFullPackage(string repositoryDir)
         {
-            var file = new FileInfo(Path.Combine(repositoryDir, "packageA.1.0.0.nupkg"));
+            return CreateFullPackage(repositoryDir, "packageA", "1.0.0", "packageB", "1.0.0");
+        }
+
+        private static FileInfo CreateFullPackage(
+            string repositoryDir, 
+            string id, 
+            string version, 
+            string dependencyId, 
+            string dependencyVersion)
+        {
+            var file = new FileInfo(Path.Combine(repositoryDir, $"{id}.{version}.nupkg"));
 
             using (var zip = new ZipArchive(File.Create(file.FullName), ZipArchiveMode.Create))
             {
@@ -283,18 +656,18 @@ namespace NuGet.Commands.Test
                 zip.AddEntry("native/net45/a.dll", new byte[] { 0 });
                 zip.AddEntry("tools/a.exe", new byte[] { 0 });
 
-                zip.AddEntry("packageA.nuspec", @"<?xml version=""1.0"" encoding=""utf-8""?>
+                zip.AddEntry($"{id}.nuspec", $@"<?xml version=""1.0"" encoding=""utf-8""?>
                         <package xmlns=""http://schemas.microsoft.com/packaging/2013/01/nuspec.xsd"">
                         <metadata>
-                            <id>packageA</id>
-                            <version>1.0.0</version>
+                            <id>{id}</id>
+                            <version>{version}</version>
                             <title />
                             <frameworkAssemblies>
                                 <frameworkAssembly assemblyName=""System.Runtime"" />
                             </frameworkAssemblies>
                             <dependencies>
                                 <group>
-                                    <dependency id=""packageB"" version=""1.0.0"" />
+                                    <dependency id=""{dependencyId}"" version=""{dependencyVersion}"" />
                                 </group>
                             </dependencies>
                             <contentFiles>
@@ -316,7 +689,7 @@ namespace NuGet.Commands.Test
             using (var zip = new ZipArchive(File.Create(file.FullName), ZipArchiveMode.Create))
             {
                 zip.AddEntry("contentFiles/any/any/config.xml", new byte[] { 0 });
-                zip.AddEntry("contentFiles/lib/net45/a.dll", new byte[] { 0 });
+                zip.AddEntry("lib/net45/a.dll", new byte[] { 0 });
 
                 zip.AddEntry("packageB.nuspec", @"<?xml version=""1.0"" encoding=""utf-8""?>
                         <package xmlns=""http://schemas.microsoft.com/packaging/2013/01/nuspec.xsd"">

@@ -45,6 +45,7 @@ namespace NuGet.LibraryModel
                 flagsToAdd: new[]
                     {
                         LibraryIncludeTypeFlag.Build,
+                        LibraryIncludeTypeFlag.ContentFiles,
                         LibraryIncludeTypeFlag.Compile,
                         LibraryIncludeTypeFlag.Native,
                         LibraryIncludeTypeFlag.Runtime

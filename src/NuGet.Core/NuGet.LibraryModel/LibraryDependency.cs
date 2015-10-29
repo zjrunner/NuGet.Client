@@ -13,7 +13,7 @@ namespace NuGet.LibraryModel
 
         public LibraryIncludeType IncludeType { get; set; } = LibraryIncludeType.Default;
 
-        public LibraryIncludeType ParentExcludeType { get; set; } = LibraryIncludeType.None;
+        public LibraryIncludeType SuppressParent { get; set; } = LibraryIncludeType.DefaultSuppress;
 
         public string Name
         {
@@ -52,7 +52,7 @@ namespace NuGet.LibraryModel
         /// </summary>
         public bool HasParentExcludeFlag(LibraryIncludeTypeFlag flag)
         {
-            return ParentExcludeType.Contains(flag);
+            return SuppressParent.Contains(flag);
         }
     }
 }

@@ -11,13 +11,18 @@ namespace NuGet.LibraryModel
     public class LibraryIncludeType : IEquatable<LibraryIncludeType>
     {
         private readonly SortedSet<LibraryIncludeTypeFlag> _keywords;
-        private readonly static SortedSet<LibraryIncludeTypeFlag> Empty = new SortedSet<LibraryIncludeTypeFlag>();
 
-        public static LibraryIncludeType Default = new LibraryIncludeType(LibraryIncludeTypeKeyword.Default.FlagsToAdd);
-        public static LibraryIncludeType All = new LibraryIncludeType(LibraryIncludeTypeKeyword.All.FlagsToAdd);
+        public static LibraryIncludeType Default = new LibraryIncludeType(LibraryIncludeTypeKeyword.All.FlagsToAdd);
+
+        private readonly static SortedSet<LibraryIncludeTypeFlag> Empty = new SortedSet<LibraryIncludeTypeFlag>();
         public static readonly LibraryIncludeType None = new LibraryIncludeType();
-        public static readonly LibraryIncludeType ContentFilesOnly 
-            = new LibraryIncludeType(new LibraryIncludeTypeFlag[] { LibraryIncludeTypeFlag.ContentFiles });
+        public static readonly LibraryIncludeType DefaultSuppress 
+            = new LibraryIncludeType(new LibraryIncludeTypeFlag[] 
+            {
+                LibraryIncludeTypeFlag.ContentFiles,
+                LibraryIncludeTypeFlag.Build,
+                LibraryIncludeTypeFlag.Analyzer
+            });
 
         public LibraryIncludeType()
         {
@@ -32,6 +37,16 @@ namespace NuGet.LibraryModel
         public bool Contains(LibraryIncludeTypeFlag flag)
         {
             return _keywords.Contains(flag);
+        }
+
+        public bool Contains(LibraryIncludeType second)
+        {
+            if (second.Keywords.Count > Keywords.Count)
+            {
+                return false;
+            }
+
+            return second.Keywords.All(key => Contains(key));
         }
 
         public static LibraryIncludeType Parse(IEnumerable<string> keywords)

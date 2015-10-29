@@ -179,9 +179,9 @@ namespace NuGet.ProjectModel
                     var dependencyValue = dependency.Value;
                     var dependencyTypeValue = LibraryDependencyType.Default;
 
-                    var dependencyIncludeFlagsValue = LibraryIncludeType.All;
+                    var dependencyIncludeFlagsValue = LibraryIncludeType.Default;
                     var dependencyExcludeFlagsValue = new LibraryIncludeType();
-                    var parentExcludeFlagsValue = LibraryIncludeType.ContentFilesOnly;
+                    var parentExcludeFlagsValue = LibraryIncludeType.DefaultSuppress;
 
                     string dependencyVersionValue = null;
                     var dependencyVersionToken = dependencyValue;
@@ -255,7 +255,7 @@ namespace NuGet.ProjectModel
                         },
                         Type = dependencyTypeValue,
                         IncludeType = includeFlags,
-                        ParentExcludeType = parentExcludeFlagsValue
+                        SuppressParent = parentExcludeFlagsValue
                     });
                 }
             }

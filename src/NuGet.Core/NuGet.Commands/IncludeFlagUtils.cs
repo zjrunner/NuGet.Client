@@ -91,7 +91,7 @@ namespace NuGet.Commands
             // child since it has no effect on the parent.
             if (parent.OuterNode != null)
             {
-                flags.Except(match.ParentExcludeType);
+                flags = flags.Except(match.SuppressParent);
             }
 
             return flags;
