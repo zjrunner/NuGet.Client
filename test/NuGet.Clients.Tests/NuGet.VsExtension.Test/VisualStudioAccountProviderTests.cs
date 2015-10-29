@@ -169,7 +169,7 @@ namespace NuGet.VsExtension.Test
             var nonInteractive = true;
 
             // Act
-            var exception = await Assert.ThrowsAsync<Exception>(async () =>
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
                 await provider.Get(uri, webProxy, isProxyRequest, isRetry, nonInteractive, CancellationToken.None));
 
             // Assert

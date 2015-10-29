@@ -12,7 +12,6 @@ using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Client.AccountManagement;
-using Microsoft.VisualStudio.Services.DelegatedAuthorization;
 using Microsoft.VisualStudio.Services.DelegatedAuthorization.Client;
 using NuGet.PackageManagement.VisualStudio;
 using VsUserAccount = Microsoft.VisualStudio.Services.Client.AccountManagement.Account;
@@ -30,6 +29,7 @@ namespace NuGetVSExtension
         private const string VssResourceTenant = "X-VSS-ResourceTenant";
         private const string DefaultMsaTenantId = "f8cdef31-a31e-4b4a-93e4-5f571e91255a";
         private const string MsaOnlyTenantId = "00000000-0000-0000-0000-000000000000";
+        private const string SessionTokenScope = "vso.packaging_write";
 
         private readonly IAccountManager _accountManager;
         private readonly DTE _dte;
@@ -62,6 +62,7 @@ namespace NuGetVSExtension
         /// First time we assume that is true to minimize network trafic.</param>
         /// <param name="nonInteractive">Flag to indicate if UI can be shown.  If true, we will fail in cases
         /// where we need to show UI instead of prompting</param>
+        /// <param name="cancellationToken">Cancelation token used to comunicate cancelation to the async tasks</param>
         /// <returns>If a credentials can be obtained a credentails object with a session token for the URI,
         /// if not NULL</returns>
         public async Task<ICredentials> Get(Uri uri, IWebProxy proxy, bool isProxyRequest, bool isRetry,
@@ -93,18 +94,17 @@ namespace NuGetVSExtension
             {
                 // we know this is a VSO endpoint but we are unable to get the credentials so we should
                 // throw so that the other providers will not be called
-                throw new Exception("could not get the account manager, unable to check the keychain");
+                throw new InvalidOperationException(Resources.AccountProvider_FailedToLoadAccountManager);
             }
 
-            VSAccountProvider provider = null;
-            provider = (VSAccountProvider) await _accountManager
+            var provider = (VSAccountProvider) await _accountManager
                 .GetAccountProviderAsync(VSAccountProvider.AccountProviderIdentifier).ConfigureAwait(false);
 
             if (provider == null)
             {
                 // we know this is a VSO endpoint but we are unable to get the credentials so we should
                 // throw so that the other providers will not be called
-                throw new Exception("could not get the account provider, unable to check the keychain");
+                throw new InvalidOperationException(Resources.AccountProvider_FailedToLoadVSOAccountProvider);
             }
 
             //  Ask keychain for all accounts
@@ -182,7 +182,7 @@ namespace NuGetVSExtension
             {
                 // No credentials found but we know that this is a VSO endpoint so we want to throw an
                 // exception to prevent the other providers from being called
-                throw new Exception("No valid credentials found for VSO account");
+                throw new InvalidOperationException(Resources.AccountProvider_NoValidCrededentialsFound);
             }
 
             return ret;
@@ -197,7 +197,7 @@ namespace NuGetVSExtension
             {
                 //  If we are not supposed to interact with the user then we can't prompt for account so we
                 // need to fail.
-                return null;
+                throw new InvalidOperationException(Resources.AccountProvider_TriedToShowUIOnNonInteractive);
             }
             Account account = null;
 
@@ -265,10 +265,8 @@ namespace NuGetVSExtension
             var connection = new VssConnection(AccountManager.VsoEndpoint, aadcred);
             var delegatedClient = connection.GetClient<DelegatedAuthorizationHttpClient>();
 
-            SessionToken sessionToken = null;
-            // N.B. uncomment scope once task #418464 is done
-            // [Expose packaging token scopes in the UI (also add PUT to vso.packaging_write)]
-            sessionToken = await delegatedClient.CreateSessionToken( /*scope: "vso.packaging_write"*/)
+            // Create a scoped session token to the endpoint
+            var sessionToken = await delegatedClient.CreateSessionToken(cancellationToken: cancellationToken, scope: SessionTokenScope)
                 .ConfigureAwait(false);
 
             var cred = new NetworkCredential
