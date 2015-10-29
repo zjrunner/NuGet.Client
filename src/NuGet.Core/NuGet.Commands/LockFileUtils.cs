@@ -20,9 +20,17 @@ namespace NuGet.Commands
             LocalPackageInfo package,
             RestoreTargetGraph targetGraph,
             VersionFolderPathResolver defaultPackagePathResolver,
-            string correctedPackageName)
+            string correctedPackageName,
+            LibraryIncludeType dependencyType)
         {
-            return CreateLockFileTargetLibrary(library, package, targetGraph, defaultPackagePathResolver, correctedPackageName, targetFrameworkOverride: null);
+            return CreateLockFileTargetLibrary(
+                library,
+                package,
+                targetGraph,
+                defaultPackagePathResolver,
+                correctedPackageName,
+                dependencyType: LibraryIncludeType.All,
+                targetFrameworkOverride: null);
         }
 
         public static LockFileTargetLibrary CreateLockFileTargetLibrary(
@@ -31,6 +39,7 @@ namespace NuGet.Commands
             RestoreTargetGraph targetGraph,
             VersionFolderPathResolver defaultPackagePathResolver,
             string correctedPackageName,
+            LibraryIncludeType dependencyType,
             NuGetFramework targetFrameworkOverride)
         {
             var lockFileLib = new LockFileTargetLibrary();
@@ -207,9 +216,6 @@ namespace NuGet.Commands
             }
 
             // Exclude items
-            var flattenedTypes = FlattenDependencyTypes(targetGraph.Graphs, LibraryIncludeType.All);
-            LibraryIncludeType dependencyType = flattenedTypes[library.Name];
-
             if (!dependencyType.Contains(LibraryIncludeTypeFlag.Runtime))
             {
                 ClearIfExists(lockFileLib.RuntimeAssemblies);
@@ -249,59 +255,6 @@ namespace NuGet.Commands
                     { "locale", item.Properties["locale"].ToString()}
                 }
             };
-        }
-
-        private static Dictionary<string, LibraryIncludeType> FlattenDependencyTypes(
-            IEnumerable<GraphNode<RemoteResolveResult>> nodes,
-            PackageSpec packageSpec)
-        {
-            var result = new Dictionary<string, LibraryIncludeType>(StringComparer.OrdinalIgnoreCase);
-            LibraryIncludeType currentTypes;
-
-            foreach (var node in nodes)
-            {
-                // Add in the current nodes to the result
-                result.Add(node.Key.Name, dependencyType);
-
-                foreach (var child in node.InnerNodes)
-                {
-                    var childType = GetDependencyType(node, child);
-
-                    // Intersect on the way down
-                    var typeIntersection = dependencyType.Intersect(childType);
-
-                    var nodeList = new GraphNode<RemoteResolveResult>[] { child };
-
-                    var childResult = FlattenDependencyTypes(nodeList, typeIntersection);
-
-                    foreach (var pair in childResult)
-                    {
-                        if (result.TryGetValue(pair.Key, out currentTypes))
-                        {
-                            // Combine results on the way up
-                            result[pair.Key] = currentTypes.Combine(pair.Value);
-                        }
-                        else
-                        {
-                            result.Add(pair.Key, pair.Value);
-                        }
-                    }
-                }
-            }
-
-            return result;
-        }
-
-        private static LibraryIncludeType GetDependencyType(
-            GraphNode<RemoteResolveResult> parent,
-            GraphNode<RemoteResolveResult> child)
-        {
-            var match = parent.Item.Data.Dependencies.FirstOrDefault(dependency =>
-                dependency.Name.Equals(child.Key.Name, StringComparison.OrdinalIgnoreCase));
-
-            Debug.Assert(match != null, "The graph contains a dependency that the node does not list");
-
-            return match?.IncludeType ?? LibraryIncludeType.Default;
         }
 
         /// <summary>

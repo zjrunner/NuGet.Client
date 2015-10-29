@@ -65,6 +65,11 @@ namespace NuGet.LibraryModel
             return new LibraryIncludeType(_keywords.Union(second.Keywords).ToArray());
         }
 
+        public LibraryIncludeType Except(LibraryIncludeType second)
+        {
+            return new LibraryIncludeType(_keywords.Except(second.Keywords).ToArray());
+        }
+
         public IEnumerable<LibraryIncludeTypeFlag> Keywords
         {
             get

@@ -568,6 +568,8 @@ namespace NuGet.Commands
                 target.TargetFramework = targetGraph.Framework;
                 target.RuntimeIdentifier = targetGraph.RuntimeIdentifier;
 
+                var flattenedFlags = IncludeFlagUtils.FlattenDependencyTypes(targetGraph.Graphs, project);
+
                 var fallbackFramework = target.TargetFramework as FallbackFramework;
                 var warnForImportsOnGraph = warnForImports && fallbackFramework != null;
 
@@ -581,12 +583,16 @@ namespace NuGet.Commands
                         continue;
                     }
 
+                    // include flags
+                    var includeFlags = flattenedFlags[library.Name];
+
                     var targetLibrary = LockFileUtils.CreateLockFileTargetLibrary(
                         libraries[Tuple.Create(library.Name, library.Version)],
                         packageInfo,
                         targetGraph,
                         resolver,
-                        correctedPackageName: library.Name);
+                        correctedPackageName: library.Name,
+                        dependencyType: includeFlags);
 
                     target.Libraries.Add(targetLibrary);
 
@@ -601,7 +607,8 @@ namespace NuGet.Commands
                             targetGraph,
                             resolver,
                             correctedPackageName: library.Name,
-                            targetFrameworkOverride: nonFallbackFramework);
+                            targetFrameworkOverride: nonFallbackFramework,
+                            dependencyType: includeFlags);
 
                         if (!targetLibrary.Equals(targetLibraryWithoutFallback))
                         {
