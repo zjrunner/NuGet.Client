@@ -14,26 +14,13 @@ namespace NuGet.Test.TestExtensions.TestablePluginCredentialProvider
             string stdin = GetInput();
             TestCredentialRequest request = JsonConvert.DeserializeObject<TestCredentialRequest>(stdin);
 
-            var responseDelaySeconds = request.ResponseDelaySeconds
-                ?? Environment.GetEnvironmentVariable("NUGET_FAKECREDENTIALHELPER_RESPONSEDELAYSECONDS");
-            var responseShouldThrow = request.ResponseShouldThrow
-                ?? Environment.GetEnvironmentVariable("NUGET_FAKECREDENTIALHELPER_RESPONSESHOULDTHROW");
-            var responseShouldAbort = request.ResponseShouldAbort
-                ?? Environment.GetEnvironmentVariable("NUGET_FAKECREDENTIALHELPER_RESPONSESHOULDABORT");
-            var responseAbortMessage = request.ResponseAbortMessage
-                ?? Environment.GetEnvironmentVariable("NUGET_FAKECREDENTIALHELPER_RESPONSEABORTMESSAGE");
-            var responseExitCode = request.ResponseExitCode
-                ?? Environment.GetEnvironmentVariable("NUGET_FAKECREDENTIALHELPER_RESPONSEEXITCODE");
-            var responseUsername = request.IsRetry
-                ? request.ResponseUsername
-                : request.ResponseUsername
-                    ?? Environment.GetEnvironmentVariable("NUGET_FAKECREDENTIALHELPER_RESPONSEUSERNAME");
-            var responsePassword = request.IsRetry
-                ? request.ResponsePassword
-                : request.ResponsePassword
-                    ?? Environment.GetEnvironmentVariable("NUGET_FAKECREDENTIALHELPER_RESPONSEPASSWORD");
-
-
+            var responseDelaySeconds = Environment.GetEnvironmentVariable(TestCredentialResponse.ResponseDelaySeconds);
+            var responseShouldThrow = Environment.GetEnvironmentVariable(TestCredentialResponse.ResponseShouldThrow);
+            var responseShouldAbort = Environment.GetEnvironmentVariable(TestCredentialResponse.ResponseShouldAbort);
+            var responseAbortMessage = Environment.GetEnvironmentVariable(TestCredentialResponse.ResponseAbortMessage);
+            var responseExitCode = Environment.GetEnvironmentVariable(TestCredentialResponse.ResponseExitCode);
+            var responseUsername = Environment.GetEnvironmentVariable(TestCredentialResponse.ResponseUserName);
+            var responsePassword = Environment.GetEnvironmentVariable(TestCredentialResponse.ResponsePassword);
 
             System.Threading.Thread.Sleep(ToInt(responseDelaySeconds));
 
@@ -52,7 +39,7 @@ namespace NuGet.Test.TestExtensions.TestablePluginCredentialProvider
 
             Console.WriteLine(JsonConvert.SerializeObject(response));
 
-            return ToInt(request.ResponseExitCode);
+            return ToInt(responseExitCode);
         }
 
         private static string GetInput()

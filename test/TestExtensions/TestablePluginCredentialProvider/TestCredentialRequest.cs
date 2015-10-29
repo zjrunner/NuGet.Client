@@ -11,19 +11,5 @@ namespace NuGet.Test.TestExtensions.TestablePluginCredentialProvider
 
         public bool IsRetry { get; set; }
 
-        public string ResponseUsername { get; set; }
-
-        public string ResponsePassword { get; set; }
-
-        public string ResponseExitCode { get; set; }
-
-        public string ResponseShouldThrow { get; set; }
-
-        public string ResponseShouldAbort { get; set; }
-
-        public string ResponseAbortMessage { get; set; }
-
-        public string ResponseDelaySeconds { get; set; }
-
     }
 }
