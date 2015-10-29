@@ -61,7 +61,7 @@ namespace NuGetConsole.Implementation.Console
             _textView = textView;
         }
 
-        private static string GetClassificationName(Color? foreground, Color? background)
+        internal static string GetClassificationName(Color? foreground, Color? background)
         {
             StringBuilder sb = new StringBuilder(32);
 
