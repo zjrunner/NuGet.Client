@@ -6,7 +6,7 @@ using System.Collections.Concurrent;
 
 namespace NuGet.LibraryModel
 {
-    public class LibraryIncludeTypeFlag
+    public class LibraryIncludeTypeFlag : IEquatable<LibraryIncludeTypeFlag>, IComparable<LibraryIncludeTypeFlag>
     {
         private static ConcurrentDictionary<string, LibraryIncludeTypeFlag> _flags 
             = new ConcurrentDictionary<string, LibraryIncludeTypeFlag>();
@@ -37,12 +37,20 @@ namespace NuGet.LibraryModel
 
         public override bool Equals(object obj)
         {
-            if (ReferenceEquals(this, obj))
+            return Equals(obj as LibraryIncludeTypeFlag);
+        }
+
+        public override int GetHashCode()
+        {
+            return StringComparer.OrdinalIgnoreCase.GetHashCode(_value);
+        }
+
+        public bool Equals(LibraryIncludeTypeFlag other)
+        {
+            if (ReferenceEquals(this, other))
             {
                 return true;
             }
-
-            var other = obj as LibraryIncludeTypeFlag;
 
             if (other == null)
             {
@@ -52,9 +60,9 @@ namespace NuGet.LibraryModel
             return StringComparer.OrdinalIgnoreCase.Equals(_value, other.ToString());
         }
 
-        public override int GetHashCode()
+        public int CompareTo(LibraryIncludeTypeFlag other)
         {
-            return StringComparer.OrdinalIgnoreCase.GetHashCode(_value);
+            return StringComparer.OrdinalIgnoreCase.Compare(_value, other.ToString());
         }
     }
 }

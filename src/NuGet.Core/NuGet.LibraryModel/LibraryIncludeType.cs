@@ -1,35 +1,32 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using NuGet.Common;
 
 namespace NuGet.LibraryModel
 {
-    public class LibraryIncludeType
+    public class LibraryIncludeType : IEquatable<LibraryIncludeType>
     {
-        private readonly LibraryIncludeTypeFlag[] _keywords;
+        private readonly SortedSet<LibraryIncludeTypeFlag> _keywords;
+        private readonly static SortedSet<LibraryIncludeTypeFlag> Empty = new SortedSet<LibraryIncludeTypeFlag>();
 
-        public static LibraryIncludeType Default;
-        public static LibraryIncludeType All;
+        public static LibraryIncludeType Default = new LibraryIncludeType(LibraryIncludeTypeKeyword.Default.FlagsToAdd);
+        public static LibraryIncludeType All = new LibraryIncludeType(LibraryIncludeTypeKeyword.All.FlagsToAdd);
         public static readonly LibraryIncludeType None = new LibraryIncludeType();
         public static readonly LibraryIncludeType ContentFilesOnly 
             = new LibraryIncludeType(new LibraryIncludeTypeFlag[] { LibraryIncludeTypeFlag.ContentFiles });
 
-        static LibraryIncludeType()
-        {
-            Default = new LibraryIncludeType(LibraryIncludeTypeKeyword.Default.FlagsToAdd as LibraryIncludeTypeFlag[]);
-            All = new LibraryIncludeType(LibraryIncludeTypeKeyword.All.FlagsToAdd as LibraryIncludeTypeFlag[]);
-        }
-
         public LibraryIncludeType()
         {
-            _keywords = new LibraryIncludeTypeFlag[0];
+            _keywords = Empty;
         }
 
-        private LibraryIncludeType(LibraryIncludeTypeFlag[] flags)
+        private LibraryIncludeType(IEnumerable<LibraryIncludeTypeFlag> flags)
         {
-            _keywords = flags;
+            _keywords = new SortedSet<LibraryIncludeTypeFlag>(flags);
         }
 
         public bool Contains(LibraryIncludeTypeFlag flag)
@@ -51,26 +48,40 @@ namespace NuGet.LibraryModel
             IEnumerable<LibraryIncludeTypeFlag> add,
             IEnumerable<LibraryIncludeTypeFlag> remove)
         {
-            return new LibraryIncludeType(
-                _keywords.Except(remove).Union(add).ToArray());
+            return new LibraryIncludeType(_keywords.Except(remove).Union(add));
         }
 
         public LibraryIncludeType Intersect(LibraryIncludeType second)
         {
-            return new LibraryIncludeType(_keywords.Intersect(second.Keywords).ToArray());
+            if (Equals(second))
+            {
+                return this;
+            }
+
+            return new LibraryIncludeType(_keywords.Intersect(second.Keywords));
         }
 
         public LibraryIncludeType Combine(LibraryIncludeType second)
         {
-            return new LibraryIncludeType(_keywords.Union(second.Keywords).ToArray());
+            if (Equals(second))
+            {
+                return this;
+            }
+
+            return new LibraryIncludeType(_keywords.Union(second.Keywords));
         }
 
         public LibraryIncludeType Except(LibraryIncludeType second)
         {
-            return new LibraryIncludeType(_keywords.Except(second.Keywords).ToArray());
+            if (!second.Keywords.Any(key => Contains(key)))
+            {
+                return this;
+            }
+
+            return new LibraryIncludeType(_keywords.Except(second.Keywords));
         }
 
-        public IEnumerable<LibraryIncludeTypeFlag> Keywords
+        public ISet<LibraryIncludeTypeFlag> Keywords
         {
             get
             {
@@ -81,6 +92,39 @@ namespace NuGet.LibraryModel
         public override string ToString()
         {
             return string.Join(",", _keywords.Select(kw => kw.ToString()));
+        }
+
+        public bool Equals(LibraryIncludeType other)
+        {
+            if (ReferenceEquals(this, other))
+            {
+                return true;
+            }
+
+            if (other == null)
+            {
+                return false;
+            }
+
+            return Keywords.Count == other.Keywords.Count
+                && Keywords.SequenceEqual(other.Keywords);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as LibraryIncludeType);
+        }
+
+        public override int GetHashCode()
+        {
+            var combiner = new HashCodeCombiner();
+
+            foreach (var flag in _keywords)
+            {
+                combiner.AddObject(flag);
+            }
+
+            return combiner.CombinedHash;
         }
     }
 }

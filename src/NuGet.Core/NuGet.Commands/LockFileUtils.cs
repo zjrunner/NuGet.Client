@@ -29,7 +29,7 @@ namespace NuGet.Commands
                 targetGraph,
                 defaultPackagePathResolver,
                 correctedPackageName,
-                dependencyType: LibraryIncludeType.All,
+                dependencyType: dependencyType,
                 targetFrameworkOverride: null);
         }
 

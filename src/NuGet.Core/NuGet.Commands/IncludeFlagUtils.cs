@@ -1,11 +1,10 @@
-﻿using NuGet.DependencyResolver;
-using NuGet.LibraryModel;
-using NuGet.ProjectModel;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading.Tasks;
+using NuGet.DependencyResolver;
+using NuGet.LibraryModel;
+using NuGet.ProjectModel;
 
 namespace NuGet.Commands
 {
@@ -28,10 +27,7 @@ namespace NuGet.Commands
                 {
                     var flags = GetDependencyType(graph, node);
 
-                    var childResult = FlattenDependencyTypes(node, flags);
-
-                    // Merge all flags
-                    MergeFlags(result, childResult);
+                    FlattenDependencyTypes(result, node, flags);
                 }
 
                 // Override flags for direct dependencies
@@ -49,51 +45,37 @@ namespace NuGet.Commands
             return result;
         }
 
-        internal static Dictionary<string, LibraryIncludeType> FlattenDependencyTypes(
+        private static void FlattenDependencyTypes(
+            Dictionary<string, LibraryIncludeType> result,
             GraphNode<RemoteResolveResult> root,
             LibraryIncludeType dependencyType)
         {
-            var result = new Dictionary<string, LibraryIncludeType>(StringComparer.OrdinalIgnoreCase);
-
-            // Add in the current nodes to the result
-            result.Add(root.Key.Name, dependencyType);
-
+            // Intersect on the way down
             foreach (var child in root.InnerNodes)
             {
                 var childType = GetDependencyType(root, child);
 
-                // Intersect on the way down
                 var typeIntersection = dependencyType.Intersect(childType);
 
-                var childResult = FlattenDependencyTypes(child, typeIntersection);
-
-                // Combine results on the way up
-                MergeFlags(result, childResult);
+                FlattenDependencyTypes(result, child, typeIntersection);
             }
 
-            return result;
-        }
-
-        private static void MergeFlags(
-            Dictionary<string, LibraryIncludeType> main,
-            Dictionary<string, LibraryIncludeType> childResult)
-        {
+            // Combine results on the way up
             LibraryIncludeType currentTypes;
-
-            foreach (var pair in childResult)
+            if (result.TryGetValue(root.Key.Name, out currentTypes))
             {
-                if (main.TryGetValue(pair.Key, out currentTypes))
-                {
-                    // Combine results on the way up
-                    main[pair.Key] = currentTypes.Combine(pair.Value);
-                }
-                else
-                {
-                    main.Add(pair.Key, pair.Value);
-                }
+                result[root.Key.Name] = currentTypes.Combine(dependencyType);
+            }
+            else
+            {
+                result.Add(root.Key.Name, dependencyType);
             }
         }
 
+        /// <summary>
+        /// Find the flags for a node. 
+        /// Include - Exclude - ParentExclude
+        /// </summary>
         private static LibraryIncludeType GetDependencyType(
             GraphNode<RemoteResolveResult> parent,
             GraphNode<RemoteResolveResult> child)
