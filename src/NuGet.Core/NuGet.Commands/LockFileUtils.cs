@@ -210,9 +210,7 @@ namespace NuGet.Commands
             var flattenedTypes = FlattenDependencyTypes(targetGraph.Graphs, LibraryIncludeType.All);
             LibraryIncludeType dependencyType = flattenedTypes[library.Name];
 
-            var excludeRuntime = !dependencyType.Contains(LibraryIncludeTypeFlag.Runtime);
-
-            if (excludeRuntime)
+            if (!dependencyType.Contains(LibraryIncludeTypeFlag.Runtime))
             {
                 ClearIfExists(lockFileLib.RuntimeAssemblies);
                 lockFileLib.FrameworkAssemblies.Clear();
@@ -234,30 +232,7 @@ namespace NuGet.Commands
                 ClearIfExists(lockFileLib.NativeLibraries);
             }
 
-            if (!dependencyType.Contains(LibraryIncludeTypeFlag.Dependencies))
-            {
-                lockFileLib.Dependencies.Clear();
-            }
-
             return lockFileLib;
-        }
-
-        private static void ClearIfExists(IList<LockFileItem> group)
-        {
-            if (group?.Any() == true)
-            {
-                var firstItem = group.OrderBy(item => item.Path.Length)
-                    .ThenBy(item => item.Path, StringComparer.OrdinalIgnoreCase)
-                    .First();
-
-                var fileName = Path.GetFileName(firstItem.Path);
-
-                var emptyDir = firstItem.Path.Substring(0, firstItem.Path.Length - fileName.Length) + "_._";
-
-                group.Clear();
-
-                group.Add(new LockFileItem(emptyDir));
-            }
         }
 
         private static bool HasItems(ContentItemGroup compileGroup)
@@ -278,7 +253,7 @@ namespace NuGet.Commands
 
         private static Dictionary<string, LibraryIncludeType> FlattenDependencyTypes(
             IEnumerable<GraphNode<RemoteResolveResult>> nodes,
-            LibraryIncludeType dependencyType)
+            PackageSpec packageSpec)
         {
             var result = new Dictionary<string, LibraryIncludeType>(StringComparer.OrdinalIgnoreCase);
             LibraryIncludeType currentTypes;
@@ -327,6 +302,31 @@ namespace NuGet.Commands
             Debug.Assert(match != null, "The graph contains a dependency that the node does not list");
 
             return match?.IncludeType ?? LibraryIncludeType.Default;
+        }
+
+        /// <summary>
+        /// Clears a lock file group and replaces the first item with _._ if 
+        /// the group has items. Empty groups are left alone.
+        /// </summary>
+        private static void ClearIfExists(IList<LockFileItem> group)
+        {
+            if (group?.Any() == true)
+            {
+                var firstItem = group.OrderBy(item => item.Path.LastIndexOf('/'))
+                    .ThenBy(item => item.Path, StringComparer.OrdinalIgnoreCase)
+                    .First();
+
+                var fileName = Path.GetFileName(firstItem.Path);
+
+                Debug.Assert(!string.IsNullOrEmpty(fileName));
+                Debug.Assert(firstItem.Path.IndexOf('/') > 0);
+
+                var emptyDir = firstItem.Path.Substring(0, firstItem.Path.Length - fileName.Length) + "_._";
+
+                group.Clear();
+
+                group.Add(new LockFileItem(emptyDir));
+            }
         }
     }
 }

@@ -180,7 +180,8 @@ namespace NuGet.ProjectModel
                     var dependencyTypeValue = LibraryDependencyType.Default;
 
                     var dependencyIncludeFlagsValue = LibraryIncludeType.All;
-                    var dependencyExcludeFlagsValue = LibraryIncludeType.Parse(Enumerable.Empty<string>());
+                    var dependencyExcludeFlagsValue = new LibraryIncludeType();
+                    var parentExcludeFlagsValue = LibraryIncludeType.ContentFilesOnly;
 
                     string dependencyVersionValue = null;
                     var dependencyVersionToken = dependencyValue;
@@ -216,6 +217,11 @@ namespace NuGet.ProjectModel
                         {
                             dependencyExcludeFlagsValue = LibraryIncludeType.Parse(strings);
                         }
+
+                        if (TryGetStringEnumerable(dependencyValue["parentExclude"], out strings))
+                        {
+                            parentExcludeFlagsValue = LibraryIncludeType.Parse(strings);
+                        }
                     }
 
                     VersionRange dependencyVersionRange = null;
@@ -248,7 +254,8 @@ namespace NuGet.ProjectModel
                             VersionRange = dependencyVersionRange,
                         },
                         Type = dependencyTypeValue,
-                        IncludeType = includeFlags
+                        IncludeType = includeFlags,
+                        ParentExcludeType = parentExcludeFlagsValue
                     });
                 }
             }

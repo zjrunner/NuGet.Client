@@ -43,8 +43,6 @@ namespace NuGet.Commands.Test
             Assert.True(result.HasFlag(LibraryIncludeTypeFlag.Native));
             Assert.True(result.HasFlag(LibraryIncludeTypeFlag.Runtime));
             Assert.True(result.HasFlag(LibraryIncludeTypeFlag.Compile));
-            Assert.True(result.HasFlag(LibraryIncludeTypeFlag.Runtime));
-            Assert.True(result.HasFlag(LibraryIncludeTypeFlag.Dependencies));
         }
 
         [Fact]
@@ -73,7 +71,6 @@ namespace NuGet.Commands.Test
             Assert.False(result.HasFlag(LibraryIncludeTypeFlag.Build));
             Assert.False(result.HasFlag(LibraryIncludeTypeFlag.Native));
             Assert.False(result.HasFlag(LibraryIncludeTypeFlag.Compile));
-            Assert.False(result.HasFlag(LibraryIncludeTypeFlag.Dependencies));
         }
 
         [Fact]
@@ -103,8 +100,6 @@ namespace NuGet.Commands.Test
             Assert.False(result.HasFlag(LibraryIncludeTypeFlag.Native));
             Assert.False(result.HasFlag(LibraryIncludeTypeFlag.Runtime));
             Assert.False(result.HasFlag(LibraryIncludeTypeFlag.Compile));
-            Assert.False(result.HasFlag(LibraryIncludeTypeFlag.Runtime));
-            Assert.False(result.HasFlag(LibraryIncludeTypeFlag.Dependencies));
         }
 
         [Fact]
@@ -145,7 +140,7 @@ namespace NuGet.Commands.Test
             Assert.True(IsEmptyFolder(targetLibrary.NativeLibraries));
             Assert.Equal(1, targetLibrary.RuntimeAssemblies.Count);
             Assert.Equal(1, targetLibrary.FrameworkAssemblies.Count);
-            Assert.Equal(0, targetLibrary.Dependencies.Count);
+            Assert.Equal(1, targetLibrary.Dependencies.Count);
             Assert.True(IsEmptyFolder(targetLibrary.CompileTimeAssemblies));
         }
 
@@ -160,7 +155,7 @@ namespace NuGet.Commands.Test
                 ""dependencies"": {
                     ""packageA"": {
                         ""version"": ""1.0.0"",
-                        ""include"": ""All""
+                        ""include"": ""all""
                     }
                 },
                 ""frameworks"": {

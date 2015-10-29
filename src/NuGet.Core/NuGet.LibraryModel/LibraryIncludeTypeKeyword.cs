@@ -21,7 +21,6 @@ namespace NuGet.LibraryModel
         public static readonly LibraryIncludeTypeKeyword Native;
         public static readonly LibraryIncludeTypeKeyword Compile;
         public static readonly LibraryIncludeTypeKeyword Runtime;
-        public static readonly LibraryIncludeTypeKeyword Dependencies;
 
         private readonly string _value;
         private readonly IEnumerable<LibraryIncludeTypeFlag> _flagsToAdd;
@@ -47,7 +46,6 @@ namespace NuGet.LibraryModel
                     {
                         LibraryIncludeTypeFlag.Build,
                         LibraryIncludeTypeFlag.Compile,
-                        LibraryIncludeTypeFlag.Dependencies,
                         LibraryIncludeTypeFlag.Native,
                         LibraryIncludeTypeFlag.Runtime
                     },
@@ -60,7 +58,6 @@ namespace NuGet.LibraryModel
                         LibraryIncludeTypeFlag.Build,
                         LibraryIncludeTypeFlag.ContentFiles,
                         LibraryIncludeTypeFlag.Compile,
-                        LibraryIncludeTypeFlag.Dependencies,
                         LibraryIncludeTypeFlag.Native,
                         LibraryIncludeTypeFlag.Runtime
                     },
@@ -69,7 +66,6 @@ namespace NuGet.LibraryModel
             DeclareOnOff(nameof(LibraryIncludeTypeFlag.Build), LibraryIncludeTypeFlag.Build, emptyFlags);
             DeclareOnOff(nameof(LibraryIncludeTypeFlag.ContentFiles), LibraryIncludeTypeFlag.ContentFiles, emptyFlags);
             DeclareOnOff(nameof(LibraryIncludeTypeFlag.Compile), LibraryIncludeTypeFlag.Compile, emptyFlags);
-            DeclareOnOff(nameof(LibraryIncludeTypeFlag.Dependencies), LibraryIncludeTypeFlag.Dependencies, emptyFlags);
             DeclareOnOff(nameof(LibraryIncludeTypeFlag.Native), LibraryIncludeTypeFlag.Native, emptyFlags);
             DeclareOnOff(nameof(LibraryIncludeTypeFlag.Runtime), LibraryIncludeTypeFlag.Runtime, emptyFlags);
             DeclareOnOff(nameof(LibraryIncludeTypeFlag.All), LibraryIncludeTypeFlag.All, All.FlagsToAdd);

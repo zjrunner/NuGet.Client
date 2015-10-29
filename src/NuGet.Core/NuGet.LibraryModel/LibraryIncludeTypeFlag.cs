@@ -19,7 +19,6 @@ namespace NuGet.LibraryModel
         public static readonly LibraryIncludeTypeFlag Native = Declare(nameof(Native));
         public static readonly LibraryIncludeTypeFlag Compile = Declare(nameof(Compile));
         public static readonly LibraryIncludeTypeFlag Runtime = Declare(nameof(Runtime));
-        public static readonly LibraryIncludeTypeFlag Dependencies = Declare(nameof(Dependencies));
 
         private LibraryIncludeTypeFlag(string value)
         {

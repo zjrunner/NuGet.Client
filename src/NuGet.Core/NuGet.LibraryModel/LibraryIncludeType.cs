@@ -12,6 +12,9 @@ namespace NuGet.LibraryModel
 
         public static LibraryIncludeType Default;
         public static LibraryIncludeType All;
+        public static readonly LibraryIncludeType None = new LibraryIncludeType();
+        public static readonly LibraryIncludeType ContentFilesOnly 
+            = new LibraryIncludeType(new LibraryIncludeTypeFlag[] { LibraryIncludeTypeFlag.ContentFiles });
 
         static LibraryIncludeType()
         {
