@@ -16,8 +16,8 @@ namespace NuGet.Credentials
     /// </summary>
     public class CredentialService : ICredentialService
     {
-        private static Lazy<IEnumerable<ICredentialProvider>> _defaultProviders
-            = new Lazy<IEnumerable<ICredentialProvider>>(() => new List<ICredentialProvider>());
+        private static IEnumerable<ICredentialProvider> _defaultProviders
+            = new List<ICredentialProvider>();
 
         private IEnumerable<ICredentialProvider> _providerList = null;
 
@@ -62,7 +62,7 @@ namespace NuGet.Credentials
         /// New CredentialService objects will be populated with these default
         /// configured providers.
         /// </summary>
-        public static Lazy<IEnumerable<ICredentialProvider>> DefaultProviders
+        public static IEnumerable<ICredentialProvider> DefaultProviders
         {
             set
             {
@@ -77,7 +77,7 @@ namespace NuGet.Credentials
         /// </summary>
         public IEnumerable<ICredentialProvider> Providers
         {
-            get { return _providerList ?? _defaultProviders.Value; }
+            get { return _providerList ?? _defaultProviders;}
             internal set { _providerList =  value; }
         } 
 

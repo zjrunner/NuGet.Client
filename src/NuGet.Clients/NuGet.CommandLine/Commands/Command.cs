@@ -130,18 +130,15 @@ namespace NuGet.CommandLine
         /// </summary>
         protected void SetDefaultCredentialProvider()
         {
-            CredentialService.DefaultProviders = new Lazy<IEnumerable<Credentials.ICredentialProvider>>(() =>
-            {
-                var providers = new List<Credentials.ICredentialProvider>();
-                var pluginProviders = new PluginCredentialProviderBuilder(Settings).BuildAll();
+            var providers = new List<Credentials.ICredentialProvider>();
+            var pluginProviders = new PluginCredentialProviderBuilder(Settings).BuildAll();
 
-                providers.Add(new CredentialProviderAdapter(new SettingsCredentialProvider(
-                    NullCredentialProvider.Instance, SourceProvider, Console)));
-                providers.AddRange(pluginProviders);
-                providers.Add(new ConsoleCredentialProvider(Console));
+            providers.Add(new CredentialProviderAdapter(new SettingsCredentialProvider(
+                NullCredentialProvider.Instance, SourceProvider, Console)));
+            providers.AddRange(pluginProviders);
+            providers.Add(new ConsoleCredentialProvider(Console));
 
-                return providers;
-            });
+            CredentialService.DefaultProviders = providers;
 
             var credentialService = new CredentialService(Console.WriteError, NonInteractive, useCache: false);
 

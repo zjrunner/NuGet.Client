@@ -105,7 +105,7 @@ namespace NuGet.Credentials.Test
             var origDefaultProvider = CredentialService.DefaultProviders;
             try
             {
-                var providers = new Lazy<IEnumerable<ICredentialProvider>>(() => new[] {_mockProvider.Object});
+                var providers = new[] {_mockProvider.Object};
                 CredentialService.DefaultProviders = providers;
 
                 var service = new CredentialService(errorDelegate: TestableErrorWriter, nonInteractive: false,
@@ -113,32 +113,6 @@ namespace NuGet.Credentials.Test
 
                 Assert.Equal(1, service.Providers.Count());
                 Assert.Same(_mockProvider.Object, service.Providers.First());
-            }
-            finally
-            {
-                CredentialService.DefaultProviders = origDefaultProvider;
-            }
-        }
-
-        [Fact]
-        public void GetCredentials_ErrorOnProviderLoadFailsOnAccessNotInitialization()
-        {
-            var origDefaultProvider = CredentialService.DefaultProviders;
-            var exceptionText = "Exception for test";
-            try
-            {
-                var providers =
-                    new Lazy<IEnumerable<ICredentialProvider>>(
-                        () => { throw new PluginException(exceptionText); });
-                CredentialService.DefaultProviders = providers;
-
-                var service = new CredentialService(errorDelegate: TestableErrorWriter, nonInteractive: false,
-                    useCache: true);
-
-                var result = Record.Exception(() => { var tmp = service.Providers; });
-
-                Assert.IsAssignableFrom(typeof (PluginException), result);
-                Assert.Contains( exceptionText, result.Message);
             }
             finally
             {
