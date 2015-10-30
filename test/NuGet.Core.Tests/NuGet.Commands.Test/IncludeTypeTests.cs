@@ -20,6 +20,207 @@ namespace NuGet.Commands.Test
     public class IncludeTypeTests : IDisposable
     {
         [Fact]
+        public async Task IncludeType_ExludeDependency()
+        {
+            // Arrange
+            var logger = new TestLogger();
+            var framework = "net46";
+            var workingDir = TestFileSystemUtility.CreateRandomTestFolder();
+
+            var projectJson = @"{
+                        ""dependencies"": {
+                            ""packageA"": {
+                                ""version"": ""1.0.0""
+                            },
+                            ""packageB"": {
+                                ""version"": ""1.0.0"",
+                                ""exclude"": ""all""
+                            }
+                        },
+                        ""frameworks"": {
+                            ""net46"": {}
+                        }
+                    }";
+
+            CreateAToB(Path.Combine(workingDir, "repository"));
+
+            // Act
+            var result = await StandardSetup(workingDir, logger, projectJson);
+
+            var target = result.LockFile.GetTarget(NuGetFramework.Parse(framework), null);
+
+            var targets = target.Libraries.ToDictionary(lib => lib.Name);
+
+            var a = targets["packageA"];
+            var b = targets["packageB"];
+
+            // Assert
+            Assert.Equal(0, result.CompatibilityCheckResults.Sum(checkResult => checkResult.Issues.Count));
+            Assert.Equal(0, logger.Errors);
+            Assert.Equal(0, logger.Warnings);
+
+            Assert.Equal(1, GetNonEmptyCount(a.RuntimeAssemblies));
+            Assert.Equal(0, GetNonEmptyCount(b.RuntimeAssemblies));
+        }
+
+        [Fact]
+        public async Task IncludeType_CircularDependencyIsHandledInFlatten()
+        {
+            // Arrange
+            var logger = new TestLogger();
+            var framework = "net46";
+            var workingDir = TestFileSystemUtility.CreateRandomTestFolder();
+
+            var projectJson = @"{
+                        ""dependencies"": {
+                            ""packageX"": ""1.0.0""
+                        },
+                        ""frameworks"": {
+                            ""net46"": {}
+                        }
+                 }";
+
+            var x = new TestPackage()
+            {
+                Id = "packageX",
+                Version = "1.0.0",
+                Include = "runtime"
+            };
+
+            var z = new TestPackage()
+            {
+                Id = "packageZ",
+                Version = "1.0.0",
+                Include = "runtime"
+            };
+            z.Dependencies.Add(x);
+
+            var y = new TestPackage()
+            {
+                Id = "packageY",
+                Version = "1.0.0",
+                Include = "runtime"
+            };
+            y.Dependencies.Add(z);
+
+            x.Dependencies.Add(y);
+
+            var packages = new List<TestPackage>()
+            {
+                x
+            };
+
+            CreatePackages(packages, Path.Combine(workingDir, "repository"));
+
+            // Act
+            var result = await StandardSetup(workingDir, logger, projectJson);
+
+            var target = result.LockFile.GetTarget(NuGetFramework.Parse(framework), null);
+
+            var targets = target.Libraries.ToDictionary(lib => lib.Name);
+
+            // Assert
+            Assert.Equal(0, result.CompatibilityCheckResults.Sum(checkResult => checkResult.Issues.Count));
+            Assert.Equal(1, logger.Errors);
+            Assert.Equal(0, logger.Warnings);
+
+            Assert.Equal(1, GetNonEmptyCount(targets["packageY"].RuntimeAssemblies));
+            Assert.Equal(1, GetNonEmptyCount(targets["packageZ"].RuntimeAssemblies));
+            Assert.Equal(1, GetNonEmptyCount(targets["packageX"].RuntimeAssemblies));
+            Assert.Equal(0, GetNonEmptyCount(targets["packageY"].CompileTimeAssemblies));
+            Assert.Equal(0, GetNonEmptyCount(targets["packageZ"].CompileTimeAssemblies));
+            Assert.Equal(1, GetNonEmptyCount(targets["packageX"].CompileTimeAssemblies));
+        }
+
+        [Fact]
+        public async Task IncludeType_UnifyDependencyEdges()
+        {
+            // Arrange
+            var logger = new TestLogger();
+            var framework = "net46";
+            var workingDir = TestFileSystemUtility.CreateRandomTestFolder();
+
+            var projectJson = @"{
+                        ""dependencies"": {
+                            ""packageA"": ""1.0.0"",
+                            ""packageB"": ""2.0.0""
+                        },
+                        ""frameworks"": {
+                            ""net46"": {}
+                        }
+                 }";
+
+            var z1 = new TestPackage()
+            {
+                Id = "packageZ",
+                Version = "1.0.0",
+                Include = "runtime"
+            };
+
+            var y1 = new TestPackage()
+            {
+                Id = "packageY",
+                Version = "1.0.0",
+                Include = "runtime"
+            };
+            y1.Dependencies.Add(z1);
+
+            var z2 = new TestPackage()
+            {
+                Id = "packageZ",
+                Version = "2.0.0",
+                Include = "compile"
+            };
+
+            var y2 = new TestPackage()
+            {
+                Id = "packageY",
+                Version = "2.0.0",
+                Include = "compile"
+            };
+            y2.Dependencies.Add(z2);
+
+            var a = new TestPackage()
+            {
+                Id = "packageA",
+                Version = "1.0.0"
+            };
+            a.Dependencies.Add(y1);
+
+            var b = new TestPackage()
+            {
+                Id = "packageB",
+                Version = "2.0.0"
+            };
+            b.Dependencies.Add(y2);
+
+            var packages = new List<TestPackage>()
+            {
+                a,
+                b
+            };
+
+            CreatePackages(packages, Path.Combine(workingDir, "repository"));
+
+            // Act
+            var result = await StandardSetup(workingDir, logger, projectJson);
+
+            var target = result.LockFile.GetTarget(NuGetFramework.Parse(framework), null);
+
+            var targets = target.Libraries.ToDictionary(lib => lib.Name);
+
+            // Assert
+            Assert.Equal(0, result.CompatibilityCheckResults.Sum(checkResult => checkResult.Issues.Count));
+            Assert.Equal(0, logger.Errors);
+            Assert.Equal(0, logger.Warnings);
+
+            Assert.Equal(0, GetNonEmptyCount(targets["packageY"].RuntimeAssemblies));
+            Assert.Equal(0, GetNonEmptyCount(targets["packageZ"].RuntimeAssemblies));
+            Assert.Equal(1, GetNonEmptyCount(targets["packageY"].CompileTimeAssemblies));
+            Assert.Equal(1, GetNonEmptyCount(targets["packageZ"].CompileTimeAssemblies));
+        }
+
+        [Fact]
         public async Task IncludeType_ProjectToProjectWithBuildOverrideToExclude()
         {
             // Arrange
