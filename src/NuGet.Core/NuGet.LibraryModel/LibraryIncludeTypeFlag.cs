@@ -6,11 +6,12 @@ using System.Collections.Concurrent;
 
 namespace NuGet.LibraryModel
 {
-    public class LibraryIncludeTypeFlag : IEquatable<LibraryIncludeTypeFlag>, IComparable<LibraryIncludeTypeFlag>
+    public class LibraryIncludeTypeFlag : IEquatable<LibraryIncludeTypeFlag>
     {
         private static ConcurrentDictionary<string, LibraryIncludeTypeFlag> _flags 
             = new ConcurrentDictionary<string, LibraryIncludeTypeFlag>();
         private readonly string _value;
+        private readonly int _hashCode;
 
         public static readonly LibraryIncludeTypeFlag None = Declare(nameof(None));
         public static readonly LibraryIncludeTypeFlag All = Declare(nameof(All));
@@ -24,6 +25,7 @@ namespace NuGet.LibraryModel
         private LibraryIncludeTypeFlag(string value)
         {
             _value = value;
+            _hashCode = StringComparer.OrdinalIgnoreCase.GetHashCode(value);
         }
 
         public static LibraryIncludeTypeFlag Declare(string keyword)
@@ -43,27 +45,13 @@ namespace NuGet.LibraryModel
 
         public override int GetHashCode()
         {
-            return StringComparer.OrdinalIgnoreCase.GetHashCode(_value);
+            return _hashCode;
         }
 
         public bool Equals(LibraryIncludeTypeFlag other)
         {
-            if (ReferenceEquals(this, other))
-            {
-                return true;
-            }
-
-            if (other == null)
-            {
-                return false;
-            }
-
-            return StringComparer.OrdinalIgnoreCase.Equals(_value, other.ToString());
-        }
-
-        public int CompareTo(LibraryIncludeTypeFlag other)
-        {
-            return StringComparer.OrdinalIgnoreCase.Compare(_value, other.ToString());
+            // This are interned, checking the reference is enough
+            return ReferenceEquals(this, other);
         }
     }
 }

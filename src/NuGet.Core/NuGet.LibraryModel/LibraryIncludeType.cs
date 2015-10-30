@@ -10,12 +10,12 @@ namespace NuGet.LibraryModel
 {
     public class LibraryIncludeType : IEquatable<LibraryIncludeType>
     {
-        private readonly SortedSet<LibraryIncludeTypeFlag> _keywords;
+        private readonly HashSet<LibraryIncludeTypeFlag> _keywords;
 
         public static LibraryIncludeType Default = new LibraryIncludeType(LibraryIncludeTypeKeyword.Default.FlagsToAdd);
         public static LibraryIncludeType All = new LibraryIncludeType(LibraryIncludeTypeKeyword.All.FlagsToAdd);
 
-        private readonly static SortedSet<LibraryIncludeTypeFlag> Empty = new SortedSet<LibraryIncludeTypeFlag>();
+        private readonly static HashSet<LibraryIncludeTypeFlag> Empty = new HashSet<LibraryIncludeTypeFlag>();
         public static readonly LibraryIncludeType None = new LibraryIncludeType();
         public static readonly LibraryIncludeType DefaultSuppress 
             = new LibraryIncludeType(new LibraryIncludeTypeFlag[] 
@@ -32,7 +32,7 @@ namespace NuGet.LibraryModel
 
         private LibraryIncludeType(IEnumerable<LibraryIncludeTypeFlag> flags)
         {
-            _keywords = new SortedSet<LibraryIncludeTypeFlag>(flags);
+            _keywords = new HashSet<LibraryIncludeTypeFlag>(flags);
         }
 
         public bool Contains(LibraryIncludeTypeFlag flag)
@@ -124,7 +124,7 @@ namespace NuGet.LibraryModel
             }
 
             return Keywords.Count == other.Keywords.Count
-                && Keywords.SequenceEqual(other.Keywords);
+                && Keywords.SetEquals(other.Keywords);
         }
 
         public override bool Equals(object obj)
