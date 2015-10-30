@@ -774,6 +774,286 @@ namespace NuGet.Commands.Test
         //    Assert.True(IsEmptyFolder(targetLibrary.CompileTimeAssemblies));
         //}
 
+        [Fact]
+        public async Task IncludeType_ProjectOverrideNuspecExclude()
+        {
+            // Arrange
+            var logger = new TestLogger();
+            var framework = "net46";
+            var workingDir = TestFileSystemUtility.CreateRandomTestFolder();
+
+            var projectJson = @"{
+                        ""dependencies"": {
+                            ""packageX"": {
+                                ""version"": ""1.0.0""
+                            },
+                            ""packageY"": ""1.0.0"",
+                            ""packageZ"": ""1.0.0""
+                        },
+                        ""frameworks"": {
+                            ""net46"": {}
+                        }
+                 }";
+
+            CreateXYZ(Path.Combine(workingDir, "repository"), string.Empty, "build");
+
+            // Act
+            var result = await StandardSetup(workingDir, logger, projectJson);
+
+            var target = result.LockFile.GetTarget(NuGetFramework.Parse(framework), null);
+
+            var targets = target.Libraries.ToDictionary(lib => lib.Name);
+
+            var msbuildTargets = GetInstalledTargets(workingDir);
+
+            // Assert
+            Assert.Equal(0, result.CompatibilityCheckResults.Sum(checkResult => checkResult.Issues.Count));
+            Assert.Equal(0, logger.Errors);
+            Assert.Equal(0, logger.Warnings);
+
+            Assert.Equal(3, msbuildTargets["TestProject"].Count);
+        }
+
+        [Fact]
+        public async Task IncludeType_ProjectExcludesBuildFromAll()
+        {
+            // Arrange
+            var logger = new TestLogger();
+            var framework = "net46";
+            var workingDir = TestFileSystemUtility.CreateRandomTestFolder();
+
+            var projectJson = @"{
+                        ""dependencies"": {
+                            ""packageX"": {
+                                ""version"": ""1.0.0"",
+                                ""exclude"": ""build""
+                            }
+                        },
+                        ""frameworks"": {
+                            ""net46"": {}
+                        }
+                 }";
+
+            CreateXYZ(Path.Combine(workingDir, "repository"));
+
+            // Act
+            var result = await StandardSetup(workingDir, logger, projectJson);
+
+            var target = result.LockFile.GetTarget(NuGetFramework.Parse(framework), null);
+
+            var targets = target.Libraries.ToDictionary(lib => lib.Name);
+
+            var msbuildTargets = GetInstalledTargets(workingDir);
+
+            // Assert
+            Assert.Equal(0, result.CompatibilityCheckResults.Sum(checkResult => checkResult.Issues.Count));
+            Assert.Equal(0, logger.Errors);
+            Assert.Equal(0, logger.Warnings);
+
+            Assert.Equal(0, msbuildTargets["TestProject"].Count);
+        }
+
+        [Fact]
+        public async Task IncludeType_NuspecExcludesBuildFromTransitiveDependencies()
+        {
+            // Arrange
+            var logger = new TestLogger();
+            var framework = "net46";
+            var workingDir = TestFileSystemUtility.CreateRandomTestFolder();
+
+            var projectJson = @"{
+                        ""dependencies"": {
+                            ""packageX"": {
+                                ""version"": ""1.0.0""
+                            }
+                        },
+                        ""frameworks"": {
+                            ""net46"": {}
+                        }
+                 }";
+
+            CreateXYZ(Path.Combine(workingDir, "repository"), string.Empty, "build");
+
+            // Act
+            var result = await StandardSetup(workingDir, logger, projectJson);
+
+            var target = result.LockFile.GetTarget(NuGetFramework.Parse(framework), null);
+
+            var targets = target.Libraries.ToDictionary(lib => lib.Name);
+
+            var msbuildTargets = GetInstalledTargets(workingDir);
+
+            // Assert
+            Assert.Equal(0, result.CompatibilityCheckResults.Sum(checkResult => checkResult.Issues.Count));
+            Assert.Equal(0, logger.Errors);
+            Assert.Equal(0, logger.Warnings);
+
+            Assert.Equal(1, msbuildTargets["TestProject"].Count);
+            Assert.Equal("packageX", msbuildTargets["TestProject"].Single());
+        }
+
+        [Fact]
+        public async Task IncludeType_NuspecFlowsOnlyRuntimeTransitiveDependencies()
+        {
+            // Arrange
+            var logger = new TestLogger();
+            var framework = "net46";
+            var workingDir = TestFileSystemUtility.CreateRandomTestFolder();
+
+            var projectJson = @"{
+                        ""dependencies"": {
+                            ""packageX"": {
+                                ""version"": ""1.0.0""
+                            }
+                        },
+                        ""frameworks"": {
+                            ""net46"": {}
+                        }
+                 }";
+
+            CreateXYZ(Path.Combine(workingDir, "repository"), "runtime", string.Empty);
+
+            // Act
+            var result = await StandardSetup(workingDir, logger, projectJson);
+
+            var target = result.LockFile.GetTarget(NuGetFramework.Parse(framework), null);
+
+            var targets = target.Libraries.ToDictionary(lib => lib.Name);
+
+            // Assert
+            Assert.Equal(0, result.CompatibilityCheckResults.Sum(checkResult => checkResult.Issues.Count));
+            Assert.Equal(0, logger.Errors);
+            Assert.Equal(0, logger.Warnings);
+
+            Assert.Equal(1, GetNonEmptyCount(targets["packageX"].RuntimeAssemblies));
+            Assert.Equal(1, GetNonEmptyCount(targets["packageY"].RuntimeAssemblies));
+            Assert.Equal(1, GetNonEmptyCount(targets["packageZ"].RuntimeAssemblies));
+            Assert.Equal(1, GetNonEmptyCount(targets["packageX"].CompileTimeAssemblies));
+            Assert.Equal(0, GetNonEmptyCount(targets["packageY"].CompileTimeAssemblies));
+            Assert.Equal(0, GetNonEmptyCount(targets["packageZ"].CompileTimeAssemblies));
+        }
+
+        [Fact]
+        public async Task IncludeType_NuspecFlowsContentFromTransitiveDependencies()
+        {
+            // Arrange
+            var logger = new TestLogger();
+            var framework = "net46";
+            var workingDir = TestFileSystemUtility.CreateRandomTestFolder();
+
+            var projectJson = @"{
+                        ""dependencies"": {
+                            ""packageX"": {
+                                ""version"": ""1.0.0""
+                            }
+                        },
+                        ""frameworks"": {
+                            ""net46"": {}
+                        }
+                 }";
+
+            CreateXYZ(Path.Combine(workingDir, "repository"), "contentFiles", string.Empty);
+
+            // Act
+            var result = await StandardSetup(workingDir, logger, projectJson);
+
+            var target = result.LockFile.GetTarget(NuGetFramework.Parse(framework), null);
+
+            var targets = target.Libraries.ToDictionary(lib => lib.Name);
+
+            // Assert
+            Assert.Equal(0, result.CompatibilityCheckResults.Sum(checkResult => checkResult.Issues.Count));
+            Assert.Equal(0, logger.Errors);
+            Assert.Equal(0, logger.Warnings);
+
+            Assert.Equal(1, GetNonEmptyCount(targets["packageX"].ContentFiles));
+            Assert.Equal(1, GetNonEmptyCount(targets["packageY"].ContentFiles));
+            Assert.Equal(1, GetNonEmptyCount(targets["packageZ"].ContentFiles));
+        }
+
+        [Fact]
+        public async Task IncludeType_ProjectOverridesNoContentFromTransitiveDependencies()
+        {
+            // Arrange
+            var logger = new TestLogger();
+            var framework = "net46";
+            var workingDir = TestFileSystemUtility.CreateRandomTestFolder();
+
+            var projectJson = @"{
+                        ""dependencies"": {
+                            ""packageA"": {
+                                ""version"": ""1.0.0""
+                            },
+                            ""packageB"": {
+                                ""version"": ""1.0.0""
+                            }
+                        },
+                        ""frameworks"": {
+                            ""net46"": {}
+                        }
+                    }";
+
+            CreateAToB(Path.Combine(workingDir, "repository"));
+
+            // Act
+            var result = await StandardSetup(workingDir, logger, projectJson);
+
+            var target = result.LockFile.GetTarget(NuGetFramework.Parse(framework), null);
+
+            var targets = target.Libraries.ToDictionary(lib => lib.Name);
+
+            var a = targets["packageA"];
+            var b = targets["packageB"];
+
+            // Assert
+            Assert.Equal(0, result.CompatibilityCheckResults.Sum(checkResult => checkResult.Issues.Count));
+            Assert.Equal(0, logger.Errors);
+            Assert.Equal(0, logger.Warnings);
+
+            Assert.Equal(1, GetNonEmptyCount(a.ContentFiles));
+            Assert.Equal(1, GetNonEmptyCount(b.ContentFiles));
+        }
+
+        [Fact]
+        public async Task IncludeType_NoContentFromTransitiveDependencies()
+        {
+            // Arrange
+            var logger = new TestLogger();
+            var framework = "net46";
+            var workingDir = TestFileSystemUtility.CreateRandomTestFolder();
+
+            var projectJson = @"{
+                        ""dependencies"": {
+                            ""packageA"": {
+                                ""version"": ""1.0.0""
+                            }
+                        },
+                        ""frameworks"": {
+                            ""net46"": {}
+                        }
+                    }";
+
+            CreateAToB(Path.Combine(workingDir, "repository"));
+
+            // Act
+            var result = await StandardSetup(workingDir, logger, projectJson);
+
+            var target = result.LockFile.GetTarget(NuGetFramework.Parse(framework), null);
+
+            var targets = target.Libraries.ToDictionary(lib => lib.Name);
+
+            var a = targets["packageA"];
+            var b = targets["packageB"];
+
+            // Assert
+            Assert.Equal(0, result.CompatibilityCheckResults.Sum(checkResult => checkResult.Issues.Count));
+            Assert.Equal(0, logger.Errors);
+            Assert.Equal(0, logger.Warnings);
+
+            Assert.Equal(1, GetNonEmptyCount(a.ContentFiles));
+            Assert.Equal(0, GetNonEmptyCount(b.ContentFiles));
+        }
+
         [Theory]
         [InlineData(@"{
                         ""dependencies"": {
@@ -879,6 +1159,8 @@ namespace NuGet.Commands.Test
             var framework = "net46";
             var workingDir = TestFileSystemUtility.CreateRandomTestFolder();
 
+            CreateAToB(Path.Combine(workingDir, "repository"));
+
             // Act
             var result = await StandardSetup(workingDir, logger, projectJson);
 
@@ -927,8 +1209,6 @@ namespace NuGet.Commands.Test
             Directory.CreateDirectory(packagesDir);
             var testProjectDir = Path.Combine(projectDir, "TestProject");
             Directory.CreateDirectory(testProjectDir);
-
-            CreateAToB(repository);
 
             var sources = new List<PackageSource>();
             sources.Add(new PackageSource(repository));
@@ -982,7 +1262,9 @@ namespace NuGet.Commands.Test
             var z = new TestPackage()
             {
                 Id = "packageZ",
-                Version = "1.0.0"
+                Version = "1.0.0",
+                Include = include,
+                Exclude = exclude
             };
 
             var y = new TestPackage()
@@ -1036,6 +1318,8 @@ namespace NuGet.Commands.Test
             IEnumerable<Packaging.Core.PackageDependency> dependencies)
         {
             var file = new FileInfo(Path.Combine(repositoryDir, $"{id}.{version}.nupkg"));
+
+            file.Directory.Create();
 
             using (var zip = new ZipArchive(File.Create(file.FullName), ZipArchiveMode.Create))
             {
@@ -1127,12 +1411,16 @@ namespace NuGet.Commands.Test
 
                 if (done.Add(package.Identity))
                 {
-                    var dependencies = package.Dependencies.Select(e => 
+                    var dependencies = package.Dependencies.Select(e =>
                         new Packaging.Core.PackageDependency(
                             e.Id,
                             VersionRange.Parse(e.Version),
-                            e.Include.Split(',').ToList(),
-                            e.Exclude.Split(',').ToList()));
+                            string.IsNullOrEmpty(e.Include)
+                                ? new List<string>()
+                                : e.Include.Split(',').ToList(),
+                            string.IsNullOrEmpty(e.Exclude)
+                                ? new List<string>()
+                                : e.Exclude.Split(',').ToList()));
 
                     CreateFullPackage(
                         repositoryPath,
