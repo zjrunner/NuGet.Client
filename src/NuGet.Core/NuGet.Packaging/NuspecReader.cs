@@ -113,8 +113,8 @@ namespace NuGet.Packaging
                         Debug.Assert(range != null, "Unable to parse range: " + rangeNode);
                     }
 
-                    var includeFlags = GetFlags(GetAttributeValue(depGroup, IncludeFlags));
-                    var excludeFlags = GetFlags(GetAttributeValue(depGroup, ExcludeFlags));
+                    var includeFlags = GetFlags(GetAttributeValue(depNode, IncludeFlags));
+                    var excludeFlags = GetFlags(GetAttributeValue(depNode, ExcludeFlags));
 
                     var dependency = new PackageDependency(
                         GetAttributeValue(depNode, Id), 
@@ -355,7 +355,8 @@ namespace NuGet.Packaging
             }
 
             var set = new HashSet<string>(
-                flags.Split(CommaArray, StringSplitOptions.RemoveEmptyEntries),
+                flags.Split(CommaArray, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(flag => flag.Trim()),
                 StringComparer.OrdinalIgnoreCase);
 
             return set.OrderBy(s => s, StringComparer.OrdinalIgnoreCase).ToList();
