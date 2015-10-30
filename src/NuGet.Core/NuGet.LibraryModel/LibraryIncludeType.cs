@@ -12,7 +12,8 @@ namespace NuGet.LibraryModel
     {
         private readonly SortedSet<LibraryIncludeTypeFlag> _keywords;
 
-        public static LibraryIncludeType Default = new LibraryIncludeType(LibraryIncludeTypeKeyword.All.FlagsToAdd);
+        public static LibraryIncludeType Default = new LibraryIncludeType(LibraryIncludeTypeKeyword.Default.FlagsToAdd);
+        public static LibraryIncludeType All = new LibraryIncludeType(LibraryIncludeTypeKeyword.All.FlagsToAdd);
 
         private readonly static SortedSet<LibraryIncludeTypeFlag> Empty = new SortedSet<LibraryIncludeTypeFlag>();
         public static readonly LibraryIncludeType None = new LibraryIncludeType();
