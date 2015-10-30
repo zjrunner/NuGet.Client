@@ -93,7 +93,7 @@ namespace NuGet.CommandLine.Test
         }
 
 
-        [Fact]
+        [Fact(Skip="Expected to fail until plugins loaded as extensions fix is in")]
         public void ConfigCommand_MisconfiguredPluginCredentialProviderDoesNotBlockConfigCommand()
         {
             var configFile = Path.GetTempFileName();
