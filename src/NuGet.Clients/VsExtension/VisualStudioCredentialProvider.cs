@@ -73,7 +73,9 @@ namespace NuGetVSExtension
                 // or request credentials. 
                 WebRequest.DefaultWebProxy = new WebProxy(uriToDisplay);
 
-                return await PromptForCredentials(uri, cancellationToken).ConfigureAwait(false);
+                var cred = await PromptForCredentials(uri, cancellationToken);
+
+                return cred;
             }
             finally
             {

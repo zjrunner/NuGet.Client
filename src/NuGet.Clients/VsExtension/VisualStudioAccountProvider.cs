@@ -83,7 +83,7 @@ namespace NuGetVSExtension
             var posibleAccounts = new List<AccountAndTenant>();
 
             //  Check to see if this is a VSO endpoint before we do anything else
-            var uriTenantId = await LookupTenant(uri, proxy, cancellationToken).ConfigureAwait(false);
+            var uriTenantId = await LookupTenant(uri, proxy, cancellationToken);
             if (string.IsNullOrWhiteSpace(uriTenantId))
             {
                 //  we don't have a tenant ID so this cannot be a VSO endpoint
@@ -98,7 +98,7 @@ namespace NuGetVSExtension
             }
 
             var provider = (VSAccountProvider) await _accountManager
-                .GetAccountProviderAsync(VSAccountProvider.AccountProviderIdentifier).ConfigureAwait(false);
+                .GetAccountProviderAsync(VSAccountProvider.AccountProviderIdentifier);
 
             if (provider == null)
             {
@@ -124,18 +124,15 @@ namespace NuGetVSExtension
             if (posibleAccounts.Count == 1)
             {
                 //  If we only have one posible account use it
-                ret = await GetTokenFromAccount(posibleAccounts[0], provider, nonInteractive, cancellationToken)
-                    .ConfigureAwait(false);
+                ret = await GetTokenFromAccount(posibleAccounts[0], provider, nonInteractive, cancellationToken);
                 if (isRetry)
                 {
-                    var hasAccess = await AccountHasAccess(uri, proxy, ret, cancellationToken)
-                        .ConfigureAwait(false);
+                    var hasAccess = await AccountHasAccess(uri, proxy, ret, cancellationToken);
                     if (!hasAccess)
                     {
                         // The account didn't have access and we are on a retry so the token didn't expire.
                         // we either need to prompt the user for different creds or fail in this case
-                        ret = await PromptUserForAccount(uriTenantId, provider, nonInteractive, cancellationToken)
-                            .ConfigureAwait(false);
+                        ret = await PromptUserForAccount(uriTenantId, provider, nonInteractive, cancellationToken);
                     }
                 }
             }
@@ -148,11 +145,9 @@ namespace NuGetVSExtension
                         account,
                         provider,
                         nonInteractive: true,
-                        cancellationToken:cancellationToken)
-                        .ConfigureAwait(false);
+                        cancellationToken:cancellationToken);
 
-                    var hasAccess = await AccountHasAccess(uri, proxy, cred, cancellationToken)
-                        .ConfigureAwait(false);
+                    var hasAccess = await AccountHasAccess(uri, proxy, cred, cancellationToken);
                     if (hasAccess)
                     {
                         accountsWithAccess.Add(new AccountWithCreds(account, cred));
@@ -167,15 +162,13 @@ namespace NuGetVSExtension
                 {
                     // we couldn't finde a unique account with access to the endpoint so we are going to have
                     // to ask the user...
-                    ret = await PromptUserForAccount(uriTenantId, provider, nonInteractive, cancellationToken)
-                        .ConfigureAwait(false);
+                    ret = await PromptUserForAccount(uriTenantId, provider, nonInteractive, cancellationToken);
                 }
 
             }
             else // count == 0 so we should prompt the user
             {
-                ret = await PromptUserForAccount(uriTenantId, provider, nonInteractive, cancellationToken)
-                    .ConfigureAwait(false);
+                ret = await PromptUserForAccount(uriTenantId, provider, nonInteractive, cancellationToken);
             }
 
             if (ret == null)
@@ -210,8 +203,7 @@ namespace NuGetVSExtension
                     parent = new IntPtr(_dte.MainWindow.HWnd);
                 }
 
-                account = await provider.CreateAccountWithUIAsync(parent, cancellationToken)
-                    .ConfigureAwait(false);
+                account = await provider.CreateAccountWithUIAsync(parent, cancellationToken);
             });
 
             var tenant = FindTenantInAccount(account, tenentId, provider);
@@ -221,7 +213,7 @@ namespace NuGetVSExtension
                     new AccountAndTenant(account, tenant),
                     provider,
                     false,
-                    cancellationToken).ConfigureAwait(false);
+                    cancellationToken);
             }
 
             return ret;
@@ -256,7 +248,7 @@ namespace NuGetVSExtension
                     parentWindowHandle: parent,
                     accountKeyForReAuthentication: account.UserAccount,
                     prompt: shouldPrompt,
-                    cancellationToken: cancellationToken).ConfigureAwait(false);
+                    cancellationToken: cancellationToken);
             });
 
             var aadcred = new VssAadCredential(new VssAadToken(result));
@@ -266,8 +258,7 @@ namespace NuGetVSExtension
             var delegatedClient = connection.GetClient<DelegatedAuthorizationHttpClient>();
 
             // Create a scoped session token to the endpoint
-            var sessionToken = await delegatedClient.CreateSessionToken(cancellationToken: cancellationToken, scope: SessionTokenScope)
-                .ConfigureAwait(false);
+            var sessionToken = await delegatedClient.CreateSessionToken(cancellationToken: cancellationToken, scope: SessionTokenScope);
 
             var cred = new NetworkCredential
             {
@@ -303,7 +294,7 @@ namespace NuGetVSExtension
 
             try
             {
-                using (var response = await req.GetResponseAsync().ConfigureAwait(false))
+                using (var response = await req.GetResponseAsync())
                 {
                     tenantId = response.Headers[VssResourceTenant];
                 }
@@ -344,7 +335,7 @@ namespace NuGetVSExtension
 
             try
             {
-                using (var response = await req.GetResponseAsync().ConfigureAwait(false) as HttpWebResponse)
+                using (var response = await req.GetResponseAsync() as HttpWebResponse)
                 {
                     if (response != null && ((int) response.StatusCode) < 300)
                     {

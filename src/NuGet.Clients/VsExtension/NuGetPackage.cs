@@ -342,7 +342,7 @@ namespace NuGetVSExtension
                             NuGet.NullCredentialProvider.Instance, packageSourceProvider)),
                         new VisualStudioAccountProvider(),
                         new VisualStudioCredentialProvider(webProxy)
-                    });
+                    }, LazyThreadSafetyMode.PublicationOnly);
 
             var credentialService = new CredentialService(
                 (s) => this._outputConsoleLogger.OutputConsole.WriteLine(s),
@@ -366,8 +366,7 @@ namespace NuGetVSExtension
                     }
 
                     return await credentialService
-                        .GetCredentials(uri, proxy, isProxy: true, cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
+                        .GetCredentials(uri, proxy, isProxy: true, cancellationToken: cancellationToken);
                 };
 
             NuGet.Protocol.Core.v3.HttpHandlerResourceV3.ProxyPassed = proxy =>
@@ -385,8 +384,7 @@ namespace NuGetVSExtension
                     var proxy = proxyCache?.GetProxy(uri);
 
                     return await credentialService
-                        .GetCredentials(uri, proxy: proxy, isProxy: false, cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
+                        .GetCredentials(uri, proxy: proxy, isProxy: false, cancellationToken: cancellationToken);
                 };
 
             NuGet.Protocol.Core.v3.HttpHandlerResourceV3.CredentialsSuccessfullyUsed = (uri, credentials) =>

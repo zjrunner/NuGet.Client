@@ -10,7 +10,11 @@ namespace NuGet.Credentials
 {
     public interface ICredentialProvider
     {
-        Task<ICredentials> Get(Uri uri, IWebProxy proxy, bool isProxyRequest, bool isRetry,
-            bool nonInteractive, CancellationToken cancellationToken);
+        Task<ICredentials> Get(Uri uri, 
+                               IWebProxy proxy, 
+                               bool isProxyRequest, 
+                               bool isRetry,
+                               bool nonInteractive, 
+                               CancellationToken cancellationToken);
     }
 }

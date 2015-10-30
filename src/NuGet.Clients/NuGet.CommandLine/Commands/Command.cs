@@ -162,7 +162,7 @@ namespace NuGet.CommandLine
                 }
 
                 return await credentialService.GetCredentials(
-                    uri, proxy, isProxy: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+                    uri, proxy, isProxy: true, cancellationToken: cancellationToken);
             };
 
             NuGet.Protocol.Core.v3.HttpHandlerResourceV3.ProxyPassed = proxy =>
@@ -173,7 +173,7 @@ namespace NuGet.CommandLine
             
             NuGet.Protocol.Core.v3.HttpHandlerResourceV3.PromptForCredentials =
                 async (uri, cancellationToken) => await credentialService.GetCredentials(
-                    uri, proxy: null, isProxy: false, cancellationToken: cancellationToken).ConfigureAwait(false);
+                    uri, proxy: null, isProxy: false, cancellationToken: cancellationToken);
 
             NuGet.Protocol.Core.v3.HttpHandlerResourceV3.CredentialsSuccessfullyUsed = (uri, credentials) =>
             {

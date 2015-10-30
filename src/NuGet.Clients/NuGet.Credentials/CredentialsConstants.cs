@@ -7,8 +7,6 @@ namespace NuGet.Credentials
     {
         public const string ExtensionsPathEnvar = "NUGET_EXTENSIONS_PATH";
 
-        public const string NonInteractiveEnvar = "NUGET_NON_INTERACTIVE";
-
         public const string PluginPrefixSetting = "CredentialProvider.Plugin.";
 
         public const int ProviderTimeoutSecondsDefault = 300;
@@ -16,7 +14,6 @@ namespace NuGet.Credentials
         public const string ProviderTimeoutSecondsEnvar = "NUGET_CREDENTIAL_PROVIDER_TIMEOUT_SECONDS";
 
         public const string ProviderTimeoutSecondsSetting = "CredentialProvider.Timeout";
-
         
         public const string SettingsConfigSection = "config";
 
