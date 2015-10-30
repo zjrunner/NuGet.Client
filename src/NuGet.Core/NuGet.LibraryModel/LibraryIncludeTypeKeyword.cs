@@ -63,13 +63,23 @@ namespace NuGet.LibraryModel
                     },
                 flagsToRemove: emptyFlags);
 
+            None = Declare(
+                "none",
+                flagsToAdd: emptyFlags,
+                flagsToRemove: new[]
+                    {
+                        LibraryIncludeTypeFlag.Build,
+                        LibraryIncludeTypeFlag.ContentFiles,
+                        LibraryIncludeTypeFlag.Compile,
+                        LibraryIncludeTypeFlag.Native,
+                        LibraryIncludeTypeFlag.Runtime
+                    });
+
             DeclareOnOff(nameof(LibraryIncludeTypeFlag.Build), LibraryIncludeTypeFlag.Build, emptyFlags);
             DeclareOnOff(nameof(LibraryIncludeTypeFlag.ContentFiles), LibraryIncludeTypeFlag.ContentFiles, emptyFlags);
             DeclareOnOff(nameof(LibraryIncludeTypeFlag.Compile), LibraryIncludeTypeFlag.Compile, emptyFlags);
             DeclareOnOff(nameof(LibraryIncludeTypeFlag.Native), LibraryIncludeTypeFlag.Native, emptyFlags);
             DeclareOnOff(nameof(LibraryIncludeTypeFlag.Runtime), LibraryIncludeTypeFlag.Runtime, emptyFlags);
-            DeclareOnOff(nameof(LibraryIncludeTypeFlag.All), LibraryIncludeTypeFlag.All, All.FlagsToAdd);
-            DeclareOnOff(nameof(LibraryIncludeTypeFlag.None), LibraryIncludeTypeFlag.None, emptyFlags);
         }
 
         private static void DeclareOnOff(

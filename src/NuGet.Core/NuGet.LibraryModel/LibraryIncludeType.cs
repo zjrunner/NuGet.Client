@@ -57,6 +57,7 @@ namespace NuGet.LibraryModel
             {
                 type = type.Combine(keyword.FlagsToAdd, keyword.FlagsToRemove);
             }
+
             return type;
         }
 
