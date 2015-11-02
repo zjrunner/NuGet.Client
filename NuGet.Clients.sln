@@ -85,8 +85,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "API.Test", "test\TestExtens
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PackageManagement.UI.Test", "test\NuGet.Clients.Tests\PackageManagement.UI.Test\PackageManagement.UI.Test.csproj", "{6157BF46-D371-4126-A7F1-ED6E23F77ACD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SampleCommandLineExtensions", "src\NuGet.Clients\SampleCommandLineExtensions\SampleCommandLineExtensions.csproj", "{F2F53B1A-B973-4932-80CB-5EDA38F9D74C}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestableCredentialProvider", "test\TestExtensions\TestablePluginCredentialProvider\TestableCredentialProvider.csproj", "{E901BDC7-CB84-40FA-A2C0-03DB4F9AEA3C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SampleCommandLineExtensions", "src\NuGet.Clients\SampleCommandLineExtensions\SampleCommandLineExtensions.csproj", "{F2F53B1A-B973-4932-80CB-5EDA38F9D74C}"
